@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+members = ["client","daemon"]
+default-members = ["client","daemon"]
+
+[workspace.package]
+version = "0.1.0-alpha"
+authors = ["Melissa Vernigorenko"]
+edition = "2024"
+license = "MIT"
+
+[profile.dev.package."*"]
+opt-level = 3
+codegen-units = 1
+
+[profile.release]
+panic = "abort"
+lto = "fat"
+codegen-units = 1
+strip = true
+debug = 0
+opt-level = "z"
