@@ -1,0 +1,9 @@
+[package]
+name = "wallie-daemon"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rand = { version = "0.10.2", default-features = false, features = ["std", "std_rng", "sys_rng"] }
