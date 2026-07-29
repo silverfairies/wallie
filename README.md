@@ -1,0 +1,47 @@
+# Wallie
+
+A (planned to be) powerful wallpaper manager for the Linux Desktop. It does not render wallpapers by itself, but allows to manage automaticly switching wallpepers based on different rules and events.
+
+IMPORTANT: Wallie is expected to work only on Linux, at least for now. It is not tested on any other *nix systems, but may work and any test information is welcome. I will never try to port it for Windows, due to how different the systems work, althrough it may become compatible "accidentaly", and contributions are welcome.
+
+## Installation
+
+### Binaries
+Binaries are available only for Linux (tested under Void Linux) under Releases after the first release. You also need some wallpaper renderer, supported ones are listed below, but any that support terminal control may work.
+
+### From Source
+For unsupported platforms or latest features you can compile from source directly. Make sure to have git, cargo and some shell installed.
+```sh
+git clone https://github.com/silverfairies/Wallie
+cd Wallie
+cargo build --release
+```
+To install into $HOME/.cargo:
+```sh
+cp target/release/{wallie,wallie-daemon}
+```
+
+## Usage
+
+## Roadmap/Planned Features
+
+- Rule based timed random wallpapers
+- Event driven immidiate wallpaper changes
+- GUI configuration
+
+### Planned official support of wallpaper renderers
+- awww
+- swaybg
+- mpvpaper
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+### AI/LLM Usage
+No AI/LLM was is being and will ever be used in this project. Any pull requests with major AI/LLM written code will be rejected. Sensible bug reports written/made with the help of an AI/LLM will be taken seriously, but will not get priority, unless they are actualy important.
+Use of AI/LLM for translation purposes to help in communication is allowed.
+
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)
