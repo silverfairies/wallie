@@ -1,53 +1,56 @@
-use std::{env::args, io::Error, path::PathBuf, process::Command, str::FromStr, thread::sleep, time::Duration};
+use std::{
+    io::{self, BufRead, BufReader, Error}, thread::sleep, time::Duration,
+};
 
-use rand::{RngExt, distr::{Distribution, weighted::WeightedIndex}, rngs::SmallRng};
+use interprocess::local_socket::{
+    GenericNamespaced, ListenerNonblockingMode, ListenerOptions, ToNsName, traits::Listener,
+};
+
+mod manager;
+use manager::Manager;
 
 fn main() -> Result<(), Error> {
-    let arguments = PassedArguments::new();
     println!("Hello, world!");
-    let mut generator: SmallRng = rand::make_rng();
-    let (pictures, weights) = parse_nonrecuresive(arguments.wallpaper_directory)?;
-    let distribuion = WeightedIndex::new(weights.iter()).unwrap();
+
+    let mut manager = Manager::new_from_args();
+    manager.init_pictures()?;
+
+    let printname = "wallie.sock";
+    let name = printname.to_ns_name::<GenericNamespaced>()?;
+
+    let listener = match ListenerOptions::new().name(name).create_sync() {
+        Err(e) if e.kind() == io::ErrorKind::AddrInUse => {
+             eprintln!(
+                "Error: could not start server because the socket file is \
+               occupied. Please check if {printname} is in use by another \
+               process and try again."
+            );
+            return Err(e);
+        }
+        x => x?,
+    };
+
+    eprintln!("Server running at {printname}");
+    listener.set_nonblocking(ListenerNonblockingMode::Accept)?;
+
     loop {
-        println!("{:#?}", Command::new("/bin/awww").args(["img", pictures[distribuion.sample(&mut generator)].to_str().unwrap()]).output());
-        println!("{}", generator.random::<u32>());
-        sleep(arguments.timing);
+        let socket = listener.accept();
+
+        if let Ok(request) = socket {
+            let mut request_text = String::new();
+            let mut read_request = BufReader::new(request);
+            read_request.read_line(&mut request_text)?;
+            match request_text.trim() {
+                "kill" => break,
+                "next" => manager.next_picture(true)?,
+                _ => (),
+            }
+        } else {
+            manager.next_picture(false)?;
+        }
+        sleep(Duration::from_millis(8));
     }
     Ok(())
 }
 
-fn parse_nonrecuresive(directory: PathBuf) -> Result<(Vec<PathBuf>, Vec<u8>), Error> {
-    let mut entries = directory.read_dir()?;
-    let mut pictures = Vec::<PathBuf>::new();
-    let mut distribution = Vec::<u8>::new();
-    loop {
-        let entry = entries.next();
-        if let Some(read) = entry {
-            let picture = read?.path();
-            if picture.is_file() {
-                pictures.push(picture);
-                distribution.push(1);
-            }
-        } else {
-            break;
-        }
-    }
-    Ok((pictures, distribution))
-}
 
-struct PassedArguments {
-    wallpaper_directory: PathBuf,
-    timing: Duration,
-}
-
-impl PassedArguments {
-    fn new () -> Self {
-        let arguments = args().collect::<Vec<String>>();
-        let mut timing = Duration::from_secs(300);
-        if arguments.contains(&"-d".to_string()) {
-            timing = Duration::from_secs(u64::from_str(arguments[arguments.iter().position(|entry| entry == &"-d".to_string()).unwrap()+1].as_str()).expect("Invalid sleep duration!"));
-        }
-        let wallpaper_directory = PathBuf::from(arguments.last().expect("No directory provided!"));
-        Self { wallpaper_directory, timing }
-    }
-}
