@@ -1,5 +1,7 @@
 use std::{
-    io::{self, BufRead, BufReader, Error}, thread::sleep, time::Duration,
+    io::{self, BufRead, BufReader, Error},
+    thread::sleep,
+    time::Duration,
 };
 
 use interprocess::local_socket::{
@@ -20,7 +22,7 @@ fn main() -> Result<(), Error> {
 
     let listener = match ListenerOptions::new().name(name).create_sync() {
         Err(e) if e.kind() == io::ErrorKind::AddrInUse => {
-             eprintln!(
+            eprintln!(
                 "Error: could not start server because the socket file is \
                occupied. Please check if {printname} is in use by another \
                process and try again."
@@ -43,14 +45,13 @@ fn main() -> Result<(), Error> {
             match request_text.trim() {
                 "kill" => break,
                 "next" => manager.next_picture(true)?,
+                "reload" => manager.init_pictures()?,
                 _ => (),
             }
         } else {
             manager.next_picture(false)?;
         }
-        sleep(Duration::from_millis(8));
+        sleep(Duration::from_millis(10));
     }
     Ok(())
 }
-
-

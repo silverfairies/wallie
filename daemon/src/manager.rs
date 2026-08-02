@@ -26,7 +26,11 @@ pub struct Manager {
 impl Manager {
     pub fn new_from_args() -> Self {
         let (wallpaper_directories, sleep) = Self::parse_arguments();
-        Self { wallpaper_directories, sleep, ..Default::default() }
+        Self {
+            wallpaper_directories,
+            sleep,
+            ..Default::default()
+        }
     }
 
     fn parse_arguments() -> (Vec<PathBuf>, Duration) {
@@ -45,10 +49,15 @@ impl Manager {
                 .expect("Invalid sleep duration!"),
             );
         }
-        (vec![PathBuf::from(arguments.last().expect("No directory provided!"))], timing)
+        (
+            vec![PathBuf::from(
+                arguments.last().expect("No directory provided!"),
+            )],
+            timing,
+        )
     }
 
-    pub fn init_pictures(&mut self) -> Result<(), Error>{
+    pub fn init_pictures(&mut self) -> Result<(), Error> {
         self.wallpapers.clear();
         let mut distr = Vec::new();
         for directory in self.wallpaper_directories.clone() {
@@ -79,13 +88,33 @@ impl Manager {
     }
 
     pub fn next_picture(&mut self, instant: bool) -> Result<(), Error> {
-        if !self.last_change.elapsed().saturating_sub(self.sleep).is_zero() || instant {
+        if !self
+            .last_change
+            .elapsed()
+            .saturating_sub(self.sleep)
+            .is_zero()
+            || instant
+        {
+            let mut new_wallpaper = &self.wallpapers[self.distribution.sample(&mut self.generator)];
+            if !new_wallpaper.is_file() {
+                eprintln!("Some files were deleted or moved. Not found: {}", new_wallpaper.to_str().unwrap());
+                self.init_pictures()?;
+                new_wallpaper = &self.wallpapers[self.distribution.sample(&mut self.generator)];
+            }
             Command::new(self.wallpaper_renderer.to_str().unwrap())
-                .args([self.wallpaper_renderer_arguments.as_slice(), vec![
-                    self.wallpapers[self.distribution.sample(&mut self.generator)]
-                        .to_str()
-                        .unwrap().to_string()
-                ].as_slice()].concat())
+                .args(
+                    [
+                        self.wallpaper_renderer_arguments.as_slice(),
+                        vec![
+                            new_wallpaper
+                                .to_str()
+                                .unwrap()
+                                .to_string(),
+                        ]
+                        .as_slice(),
+                    ]
+                    .concat(),
+                )
                 .output()?;
             self.last_change = Instant::now();
         }

@@ -4,22 +4,20 @@ use {
     std::io::{BufReader, prelude::*},
 };
 
+const COMMANDS: [&str; 6] = ["next", "kill", "reload", "info", "img", "help"];
+
 fn main() {
+    let mut unproper = true;
     for entry in args() {
-        match entry.trim() {
-            "next" => next(),
-            "kill" => kill(),
-            _ => println!("{}", entry),
+        if COMMANDS.contains(&entry.trim()) {
+            call_server(entry.trim()).unwrap();
+            unproper = false;
+            break;
         }
     }
-}
-
-fn next() {
-    let _ = call_server("next");
-}
-
-fn kill() {
-    let _ = call_server("kill");
+    if unproper {
+        eprintln!("Unproper arguments!");
+    }
 }
 
 fn call_server(request: &str) -> Result<(), Error> {
