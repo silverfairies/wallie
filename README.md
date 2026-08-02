@@ -18,10 +18,26 @@ cargo build --release
 ```
 To install into $HOME/.cargo:
 ```sh
-cp target/release/{wallie,wallie-daemon}
+cp target/release/{wallie,wallie-daemon} $HOME/.cargo/bin
+```
+or
+```sh
+cp target/release/{wallie,wallie-daemon} $HOME/bin
 ```
 
 ## Usage
+
+Start the daemon with
+```sh
+wallie-daemon ~/path/to/wallpaper/directory
+```
+This will parse the directory recursively for **all** files, including non-picture ones. Curently Wallie supports only awww as the backend and by default will change the picture every 300 seconds. The duration can be changed with the -d flag specified in integer seconds.
+the ```wallie``` command can be used for the following:
+```sh
+wallie next #randomly chooses the next wallpaper and resets the timer
+wallie reload #reparses the wallpaper directory without affecting anything else
+wallie kill #kills the daemon
+```
 
 ## Roadmap/Planned Features
 
@@ -33,6 +49,7 @@ cp target/release/{wallie,wallie-daemon}
 - awww
 - swaybg
 - mpvpaper
+- Whatever KDE does
 
 ## Contributing
 
