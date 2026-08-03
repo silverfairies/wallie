@@ -2,6 +2,7 @@ use rand::{
     distr::{Distribution, weighted::WeightedIndex},
     rngs::SmallRng,
 };
+use serde::Serialize;
 
 use std::{
     env::args,
@@ -15,6 +16,7 @@ use std::{
 pub struct Manager {
     generator: SmallRng,
     last_change: Instant,
+    current_wallpaper: Option<PathBuf>,
     wallpaper_directories: Vec<PathBuf>,
     wallpapers: Vec<PathBuf>,
     distribution: WeightedIndex<u8>,
@@ -101,7 +103,7 @@ impl Manager {
                 self.init_pictures()?;
                 new_wallpaper = &self.wallpapers[self.distribution.sample(&mut self.generator)];
             }
-            Command::new(self.wallpaper_renderer.to_str().unwrap())
+            let exit = Command::new(self.wallpaper_renderer.to_str().unwrap())
                 .args(
                     [
                         self.wallpaper_renderer_arguments.as_slice(),
@@ -115,10 +117,23 @@ impl Manager {
                     ]
                     .concat(),
                 )
-                .output()?;
+                .status();
+            if let Err(e) = exit {
+                eprintln!("Some error while changing background happened: {}", e);
+            } else if let Ok(e) = exit {
+                if !e.success() {
+                    eprintln!("Some error while changing background happened: {:#?}", e.code());
+                } else {
+                    self.current_wallpaper = Some(new_wallpaper.to_owned());
+                }
+            }
             self.last_change = Instant::now();
         }
         Ok(())
+    }
+
+    pub fn get_info (&self) -> Info {
+        Info { current_wallpaper: self.current_wallpaper.clone(), duration: self.sleep, time_left: self.sleep.saturating_sub(self.last_change.elapsed()) }
     }
 }
 
@@ -127,6 +142,7 @@ impl Default for Manager {
         Self {
             generator: rand::make_rng(),
             last_change: Instant::now(),
+            current_wallpaper: None,
             wallpaper_directories: Vec::new(),
             wallpapers: Vec::new(),
             distribution: WeightedIndex::new([1].iter()).unwrap(),
@@ -135,4 +151,11 @@ impl Default for Manager {
             wallpaper_renderer_arguments: vec!["img".to_string()],
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+pub struct Info {
+    current_wallpaper: Option<PathBuf>,
+    duration: Duration,
+    time_left: Duration,
 }

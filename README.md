@@ -32,11 +32,9 @@ Start the daemon with
 wallie-daemon ~/path/to/wallpaper/directory
 ```
 This will parse the directory recursively for **all** files, including non-picture ones. Curently Wallie supports only awww as the backend and by default will change the picture every 300 seconds. The duration can be changed with the -d flag specified in integer seconds.
-the ```wallie``` command can be used for the following:
+Help for ```wallie``` is available:
 ```sh
-wallie next #randomly chooses the next wallpaper and resets the timer
-wallie reload #reparses the wallpaper directory without affecting anything else
-wallie kill #kills the daemon
+wallie help
 ```
 
 ## Roadmap/Planned Features
