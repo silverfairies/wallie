@@ -1,5 +1,5 @@
 use std::{
-    io::{self, BufRead, BufReader, Error},
+    io::{self, BufReader, Error, Read, Write},
     thread::sleep,
     time::Duration,
 };
@@ -35,18 +35,21 @@ fn main() -> Result<(), Error> {
     eprintln!("Server running at {printname}");
     listener.set_nonblocking(ListenerNonblockingMode::Accept)?;
 
-    loop {
+    let mut living = true;
+
+    while living {
         let socket = listener.accept();
 
         if let Ok(request) = socket {
             let mut request_text = String::new();
             let mut read_request = BufReader::new(request);
-            read_request.read_line(&mut request_text)?;
-            match request_text.trim() {
-                "kill" => break,
+            read_request.read_to_string(&mut request_text)?;
+            match request_text.as_str() {
+                "kill" => living = false,
                 "next" => manager.next_picture(true)?,
                 "reload" => manager.init_pictures()?,
-                _ => (),
+                "info" => listener.accept()?.write_all(ron::to_string(&manager.get_info()).unwrap().as_bytes())?,
+                _ => manager.next_picture(false)?,
             }
         } else {
             manager.next_picture(false)?;
