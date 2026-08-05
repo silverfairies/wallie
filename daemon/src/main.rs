@@ -11,11 +11,13 @@ use interprocess::local_socket::{
 mod manager;
 use manager::Manager;
 
-fn main() -> Result<(), Error> {
-    println!("Hello, world!");
 
+mod renderers;
+
+fn main() -> Result<(), Error> {
     let mut manager = Manager::new_from_args();
     manager.init_pictures()?;
+    manager.run()?;
 
     let printname = "wallie.sock";
     let name = printname.to_ns_name::<GenericNamespaced>()?;
@@ -48,13 +50,15 @@ fn main() -> Result<(), Error> {
                 "kill" => living = false,
                 "next" => manager.next_picture(true)?,
                 "reload" => manager.init_pictures()?,
-                "info" => listener.accept()?.write_all(ron::to_string(&manager.get_info()).unwrap().as_bytes())?,
+                "info" => listener
+                    .accept()?
+                    .write_all(ron::to_string(&manager.get_info()).unwrap().as_bytes())?,
                 _ => manager.next_picture(false)?,
             }
         } else {
             manager.next_picture(false)?;
         }
-        sleep(Duration::from_millis(10));
+        sleep(Duration::from_millis(100));
     }
     Ok(())
 }

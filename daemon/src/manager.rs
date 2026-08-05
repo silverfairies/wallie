@@ -3,12 +3,14 @@ use rand::{
     rngs::SmallRng,
 };
 use serde::Serialize;
+use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+
+use crate::renderers::Renderer;
 
 use std::{
     env::args,
     io::Error,
     path::PathBuf,
-    process::Command,
     str::FromStr,
     time::{Duration, Instant},
 };
@@ -21,25 +23,32 @@ pub struct Manager {
     wallpapers: Vec<PathBuf>,
     distribution: WeightedIndex<u8>,
     sleep: Duration,
-    wallpaper_renderer: PathBuf,
-    wallpaper_renderer_arguments: Vec<String>,
+    renderer: Renderer,
+    process_list: System,
 }
 
 impl Manager {
     pub fn new_from_args() -> Self {
-        let (wallpaper_directories, sleep) = Self::parse_arguments();
+        let (wallpaper_directories, sleep, renderer) = Self::parse_arguments();
         Self {
             wallpaper_directories,
             sleep,
+            renderer,
             ..Default::default()
         }
     }
 
-    fn parse_arguments() -> (Vec<PathBuf>, Duration) {
+    pub fn run(&mut self) -> Result<(), Error> {
+        self.renderer = self.renderer.clone().auto(&mut self.process_list);
+        let picture = &self.random_picture()?;
+        let _ = self.renderer.spawn(picture, &mut self.process_list)?;
+        Ok(())
+    }
+
+    fn parse_arguments() -> (Vec<PathBuf>, Duration, Renderer) {
         let arguments = args().collect::<Vec<String>>();
-        let mut timing = Duration::from_secs(300);
-        if arguments.contains(&"-d".to_string()) {
-            timing = Duration::from_secs(
+        let timing = if arguments.contains(&"-d".to_string()) {
+            Duration::from_secs(
                 u64::from_str(
                     arguments[arguments
                         .iter()
@@ -49,13 +58,35 @@ impl Manager {
                     .as_str(),
                 )
                 .expect("Invalid sleep duration!"),
-            );
-        }
+            )
+        } else {
+            Duration::from_secs(300)
+        };
+        let renderer = if arguments.contains(&"-r".to_string()) {
+            match arguments[arguments
+                .iter()
+                .position(|entry| entry == &"-r".to_string())
+                .unwrap()
+                + 1]
+            .as_str()
+            {
+                "awww" => Renderer::Awww,
+                "swaybg" => Renderer::Swaybg,
+                "auto" => Renderer::Auto,
+                renderer => {
+                    eprintln!("Invalid renderer: {}", renderer);
+                    Renderer::Awww
+                }
+            }
+        } else {
+            Renderer::Awww
+        };
         (
             vec![PathBuf::from(
                 arguments.last().expect("No directory provided!"),
             )],
             timing,
+            renderer,
         )
     }
 
@@ -97,34 +128,18 @@ impl Manager {
             .is_zero()
             || instant
         {
-            let mut new_wallpaper = &self.wallpapers[self.distribution.sample(&mut self.generator)];
-            if !new_wallpaper.is_file() {
-                eprintln!("Some files were deleted or moved. Not found: {}", new_wallpaper.to_str().unwrap());
-                self.init_pictures()?;
-                new_wallpaper = &self.wallpapers[self.distribution.sample(&mut self.generator)];
-            }
-            let exit = Command::new(self.wallpaper_renderer.to_str().unwrap())
-                .args(
-                    [
-                        self.wallpaper_renderer_arguments.as_slice(),
-                        vec![
-                            new_wallpaper
-                                .to_str()
-                                .unwrap()
-                                .to_string(),
-                        ]
-                        .as_slice(),
-                    ]
-                    .concat(),
-                )
-                .status();
+            let new_wallpaper = self.random_picture()?;
+            let exit = self.renderer.change(&new_wallpaper, &mut self.process_list);
             if let Err(e) = exit {
                 eprintln!("Some error while changing background happened: {}", e);
             } else if let Ok(e) = exit {
                 if !e.success() {
-                    eprintln!("Some error while changing background happened: {:#?}", e.code());
+                    eprintln!(
+                        "Some error while changing background happened: {:#?}",
+                        e.code()
+                    );
                 } else {
-                    self.current_wallpaper = Some(new_wallpaper.to_owned());
+                    self.current_wallpaper = Some(new_wallpaper);
                 }
             }
             self.last_change = Instant::now();
@@ -132,8 +147,27 @@ impl Manager {
         Ok(())
     }
 
-    pub fn get_info (&self) -> Info {
-        Info { current_wallpaper: self.current_wallpaper.clone(), duration: self.sleep, time_left: self.sleep.saturating_sub(self.last_change.elapsed()) }
+    fn random_picture(&mut self) -> Result<PathBuf, Error> {
+        let mut new_wallpaper =
+            self.wallpapers[self.distribution.sample(&mut self.generator)].to_owned();
+        if !new_wallpaper.is_file() {
+            eprintln!(
+                "Some files were deleted or moved. Not found: {}",
+                new_wallpaper.to_str().unwrap()
+            );
+            self.init_pictures()?;
+            new_wallpaper =
+                self.wallpapers[self.distribution.sample(&mut self.generator)].to_owned();
+        }
+        Ok(new_wallpaper)
+    }
+
+    pub fn get_info(&self) -> Info {
+        Info {
+            current_wallpaper: self.current_wallpaper.clone(),
+            duration: self.sleep,
+            time_left: self.sleep.saturating_sub(self.last_change.elapsed()),
+        }
     }
 }
 
@@ -147,8 +181,10 @@ impl Default for Manager {
             wallpapers: Vec::new(),
             distribution: WeightedIndex::new([1].iter()).unwrap(),
             sleep: Duration::from_secs(300),
-            wallpaper_renderer: PathBuf::from_str("/bin/awww").unwrap(),
-            wallpaper_renderer_arguments: vec!["img".to_string()],
+            renderer: Renderer::Auto,
+            process_list: System::new_with_specifics(
+                RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing()),
+            ),
         }
     }
 }
