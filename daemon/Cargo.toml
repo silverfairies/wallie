@@ -10,3 +10,4 @@ interprocess = { version = "2.4.2", default-features = false }
 rand = { version = "0.10.2", default-features = false, features = ["std", "std_rng", "sys_rng"] }
 ron = "0.12.2"
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
