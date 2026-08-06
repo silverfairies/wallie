@@ -27,11 +27,21 @@ cp target/release/{wallie,wallie-daemon} $HOME/bin
 
 ## Usage
 
+### Daemon
 Start the daemon with
 ```sh
-wallie-daemon ~/path/to/wallpaper/directory
+wallie-daemon --simple /path/to/wallpaper/directory
 ```
-This will parse the directory recursively for **all** files, including non-picture ones. Curently Wallie supports only awww as the backend and by default will change the picture every 300 seconds. The duration can be changed with the -d flag specified in integer seconds.
+This will parse the directory recursively for **all** files, including non-picture ones, which may lead to errors on the backend side. By default wallie will change the picture every 300 seconds. The duration can be changed with the -d flag specified in integer seconds.
+
+### Available backends:
+Can be specified with the -r flag
+- awww
+- swaybg
+- auto
+Defaults to auto, which itself defaults to awww if can not determine the curent wallpaper renderer.
+
+### CLI Interface
 Help for ```wallie``` is available:
 ```sh
 wallie help
@@ -44,8 +54,8 @@ wallie help
 - GUI configuration
 
 ### Planned official support of wallpaper renderers
-- awww
-- swaybg
+- awww 
+- swaybg 
 - mpvpaper
 - Whatever KDE does
 

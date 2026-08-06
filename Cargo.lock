@@ -72,6 +72,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "constcat"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "136d3e02915a2cea4d74caa8681e2d44b1c3254bdbf17d11d41d587ff858832c"
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -427,8 +433,9 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
 name = "wallie"
-version = "0.1.0-alpha"
+version = "0.1.0-unstable"
 dependencies = [
+ "constcat",
  "interprocess",
  "ron",
  "serde",
@@ -437,9 +444,10 @@ dependencies = [
 
 [[package]]
 name = "wallie-daemon"
-version = "0.1.0-alpha"
+version = "0.1.0-unstable"
 dependencies = [
  "chrono",
+ "constcat",
  "interprocess",
  "rand",
  "ron",
@@ -449,7 +457,7 @@ dependencies = [
 
 [[package]]
 name = "wallie-gui"
-version = "0.1.0-alpha"
+version = "0.1.0-unstable"
 
 [[package]]
 name = "wasm-bindgen"

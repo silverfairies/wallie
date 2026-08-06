@@ -1,13 +1,17 @@
-use std::{env::args, io::Error, path::PathBuf, time::Duration};
+use constcat::concat;
+use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
+use std::{env::args, io::Error, path::PathBuf, time::Duration};
 
 use {
     interprocess::local_socket::{GenericFilePath, GenericNamespaced, Stream, prelude::*},
     std::io::{BufReader, prelude::*},
 };
 
-const COMMANDS: [&str; 11] = ["next", "kill", "reload", "info", "img", "help", "pause", "unpause", "help", "-h", "--help"];
-const HELP: &str = "Wallie 0.1.0-alpha
+const COMMANDS: [&str; 11] = [
+    "next", "kill", "reload", "info", "img", "help", "pause", "unpause", "help", "-h", "--help",
+];
+const HELP: &str = concat!(env!("CARGO_PKG_NAME"), " v", env!("CARGO_PKG_VERSION"), "
 
 wallie command [options]
 
@@ -24,13 +28,15 @@ Commands:
     reload
         Reparses the wallpaper directory
 
-    info
+    info [options]
         Get curent wallpaper information
-        Takes in arguments:
+        Takes in options:
             -p, --pretty
                 Prettyprint
             -j, --json
-                Formated JSON, ignores all  other arguments besides -p
+                Formated as JSON, ignores all other arguments besides -p. Takes precedence over --ron
+            -r, --ron
+                Formated as RON, ignores all other arguments besides -p
             -w, --wallpaper
                 Path to curent wallpaper or none
             -d, --duration
@@ -38,7 +44,8 @@ Commands:
             -t, --time-left
                 Time left till next wallpaper
             -e, --exact
-                Specify timings in nanoseconds instead of whole seconds";
+                Specify timings in nanoseconds instead of whole seconds
+");
 
 fn main() {
     let mut unproper = true;
@@ -57,18 +64,27 @@ fn main() {
     }
 }
 
-fn info <I: Iterator<Item = String>> (arguments: I) -> Result<(), Error> {
+fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
     let info_args = [
         ("wallpaper", 'w'),
         ("duration", 'd'),
-        ("time-left",'t'),
+        ("time-left", 't'),
         ("exact", 'e'),
         ("pretty", 'p'),
         ("json", 'j'),
+        ("ron", 'r'),
     ];
     let mut request = Vec::new();
     for arg in arguments {
-        request.append(&mut parser(arg.strip_prefix('-').ok_or(Error::new(std::io::ErrorKind::InvalidInput, format!("Invalid argument: {}", arg)))?.to_string(), &info_args)?);
+        request.append(&mut parser(
+            arg.strip_prefix('-')
+                .ok_or(Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("Invalid argument: {}", arg),
+                ))?
+                .to_string(),
+            &info_args,
+        )?);
     }
     call_server("info")?;
 
@@ -80,9 +96,21 @@ fn info <I: Iterator<Item = String>> (arguments: I) -> Result<(), Error> {
         } else {
             println!("{}", serde_json::to_string(&response_deser)?);
         }
+    } else if request.contains(&"ron".to_string()) {
+        if request.contains(&"pretty".to_string()) {
+            println!(
+                "{}",
+                ron::ser::to_string_pretty(&response_deser, PrettyConfig::default()).unwrap()
+            );
+        } else {
+            println!("{}", ron::to_string(&response_deser).unwrap());
+        }
     } else {
         if request.contains(&"pretty".to_string()) {
-            if request.contains(&"wallpaper".to_string()) || request.contains(&"duration".to_string()) || request.contains(&"time-left".to_string()) {
+            if request.contains(&"wallpaper".to_string())
+                || request.contains(&"duration".to_string())
+                || request.contains(&"time-left".to_string())
+            {
                 if request.contains(&"wallpaper".to_string()) {
                     if let Some(wallpaper) = response_deser.current_wallpaper {
                         println!("Curent wallpaper path: {}", wallpaper.to_str().unwrap());
@@ -92,16 +120,28 @@ fn info <I: Iterator<Item = String>> (arguments: I) -> Result<(), Error> {
                 }
                 if request.contains(&"duration".to_string()) {
                     if request.contains(&"exact".to_string()) {
-                        println!("Time between wallpapers in nanoseconds: {}ns", response_deser.duration.as_nanos());
+                        println!(
+                            "Time between wallpapers in nanoseconds: {}ns",
+                            response_deser.duration.as_nanos()
+                        );
                     } else {
-                        println!("Time between wallpapers: {}s", response_deser.duration.as_secs());
+                        println!(
+                            "Time between wallpapers: {}s",
+                            response_deser.duration.as_secs()
+                        );
                     }
                 }
                 if request.contains(&"time-left".to_string()) {
                     if request.contains(&"exact".to_string()) {
-                        println!("Time till next wallaper in nanoseconds: {}ns", response_deser.time_left.as_nanos());
+                        println!(
+                            "Time till next wallaper in nanoseconds: {}ns",
+                            response_deser.time_left.as_nanos()
+                        );
                     } else {
-                        println!("Time till next wallpaper: {}s", response_deser.time_left.as_secs());
+                        println!(
+                            "Time till next wallpaper: {}s",
+                            response_deser.time_left.as_secs()
+                        );
                     }
                 }
             } else {
@@ -111,15 +151,30 @@ fn info <I: Iterator<Item = String>> (arguments: I) -> Result<(), Error> {
                     println!("Wallie does not track current wallpaper!");
                 }
                 if request.contains(&"exact".to_string()) {
-                    println!("Time between wallpapers in nanoseconds: {}ns", response_deser.duration.as_nanos());
-                    println!("Time till next wallaper in nanoseconds: {}ns", response_deser.time_left.as_nanos());
+                    println!(
+                        "Time between wallpapers in nanoseconds: {}ns",
+                        response_deser.duration.as_nanos()
+                    );
+                    println!(
+                        "Time till next wallaper in nanoseconds: {}ns",
+                        response_deser.time_left.as_nanos()
+                    );
                 } else {
-                    println!("Time between wallpapers: {}s", response_deser.duration.as_secs());
-                    println!("Time till next wallpaper: {}s", response_deser.time_left.as_secs());
+                    println!(
+                        "Time between wallpapers: {}s",
+                        response_deser.duration.as_secs()
+                    );
+                    println!(
+                        "Time till next wallpaper: {}s",
+                        response_deser.time_left.as_secs()
+                    );
                 }
             }
         } else {
-            if request.contains(&"wallpaper".to_string()) || request.contains(&"duration".to_string()) || request.contains(&"time-left".to_string()) {
+            if request.contains(&"wallpaper".to_string())
+                || request.contains(&"duration".to_string())
+                || request.contains(&"time-left".to_string())
+            {
                 if request.contains(&"wallpaper".to_string()) {
                     if let Some(wallpaper) = response_deser.current_wallpaper {
                         println!("{}", wallpaper.to_str().unwrap());
@@ -171,10 +226,32 @@ fn parser(arg: String, possible_arguments: &[(&str, char)]) -> Result<Vec<String
     let mut parsed = Vec::new();
     if arg.starts_with('-') {
         let argument = arg.strip_prefix('-').unwrap();
-        Ok(vec![possible_arguments.iter().find(|possible| possible.0 == argument).ok_or(Error::new(std::io::ErrorKind::InvalidInput, format!("Invalid argument: {}", argument)))?.0.to_owned().to_string()])
+        Ok(vec![
+            possible_arguments
+                .iter()
+                .find(|possible| possible.0 == argument)
+                .ok_or(Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("Invalid argument: {}", argument),
+                ))?
+                .0
+                .to_owned()
+                .to_string(),
+        ])
     } else {
         for each in arg.chars() {
-            parsed.push(possible_arguments.iter().find(|possible| possible.1 == each).ok_or(Error::new(std::io::ErrorKind::InvalidInput, format!("Invalid argument: {}", each)))?.0.to_owned().to_string());
+            parsed.push(
+                possible_arguments
+                    .iter()
+                    .find(|possible| possible.1 == each)
+                    .ok_or(Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("Invalid argument: {}", each),
+                    ))?
+                    .0
+                    .to_owned()
+                    .to_string(),
+            );
         }
         Ok(parsed)
     }
@@ -193,8 +270,7 @@ fn call_server(request: &str) -> Result<(), Error> {
     let mut conn = BufReader::new(Stream::connect(name)?);
 
     // BufReader doesn't pass Write through, so we use get_mut.
-    conn.get_mut()
-        .write_all(request.as_bytes())?;
+    conn.get_mut().write_all(request.as_bytes())?;
 
     // We now employ the buffer we allocated prior and receive a single line,
     // interpreting a newline character as an end-of-file (because local

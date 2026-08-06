@@ -2,12 +2,16 @@
 resolver = "3"
 members = ["client","daemon", "gui"]
 default-members = ["client","daemon"]
+edition = "2024"
 
 [workspace.package]
-version = "0.1.0-alpha"
+version = "0.1.0-unstable"
 authors = ["Melissa Vernigorenko"]
 edition = "2024"
 license = "MIT"
+description = "A powerful wallpaper manager for unix"
+readme = "README.md"
+repository = "https://codeberg.org/silverfairies/wallie"
 
 [profile.dev.package."*"]
 opt-level = 3
