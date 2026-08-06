@@ -21,7 +21,7 @@ pub struct Manager {
     current_wallpaper: Option<PathBuf>,
     wallpaper_directories: Vec<PathBuf>,
     wallpapers: Vec<PathBuf>,
-    distribution: WeightedIndex<u8>,
+    distribution: WeightedIndex<u32>,
     sleep: Duration,
     renderer: Renderer,
     process_list: System,
@@ -102,10 +102,10 @@ impl Manager {
         Ok(())
     }
 
-    fn parse_directory_recursive(directory: PathBuf) -> Result<(Vec<PathBuf>, Vec<u8>), Error> {
+    fn parse_directory_recursive(directory: PathBuf) -> Result<(Vec<PathBuf>, Vec<u32>), Error> {
         let entries = directory.read_dir()?;
         let mut pictures = Vec::<PathBuf>::new();
-        let mut distribution = Vec::<u8>::new();
+        let mut distribution = Vec::<u32>::new();
         for entry in entries {
             let picture = entry?.path();
             if picture.is_file() {
