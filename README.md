@@ -54,8 +54,8 @@ wallie help
 - GUI configuration
 
 ### Planned official support of wallpaper renderers
-- awww 
-- swaybg 
+- awww ✔
+- swaybg ✔
 - mpvpaper
 - Whatever KDE does
 
