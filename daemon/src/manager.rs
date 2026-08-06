@@ -28,14 +28,14 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new_from_args() -> Self {
-        let (wallpaper_directories, sleep, renderer) = Self::parse_arguments();
-        Self {
+    pub fn new_from_args() -> Result<Self, Error> {
+        let (wallpaper_directories, sleep, renderer) = Self::parse_arguments()?;
+        Ok(Self {
             wallpaper_directories,
             sleep,
             renderer,
             ..Default::default()
-        }
+        })
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
@@ -45,49 +45,56 @@ impl Manager {
         Ok(())
     }
 
-    fn parse_arguments() -> (Vec<PathBuf>, Duration, Renderer) {
+    fn parse_arguments() -> Result<(Vec<PathBuf>, Duration, Renderer), Error> {
         let arguments = args().collect::<Vec<String>>();
-        let timing = if arguments.contains(&"-d".to_string()) {
-            Duration::from_secs(
-                u64::from_str(
-                    arguments[arguments
-                        .iter()
-                        .position(|entry| entry == &"-d".to_string())
-                        .unwrap()
-                        + 1]
-                    .as_str(),
+        if arguments.contains(&"--simple".to_string()) {
+            let timing = if arguments.contains(&"-d".to_string()) {
+                Duration::from_secs(
+                    u64::from_str(
+                        arguments[arguments
+                            .iter()
+                            .position(|entry| entry == &"-d".to_string())
+                            .unwrap()
+                            + 1]
+                        .as_str(),
+                    )
+                    .expect("Invalid sleep duration!"),
                 )
-                .expect("Invalid sleep duration!"),
-            )
-        } else {
-            Duration::from_secs(300)
-        };
-        let renderer = if arguments.contains(&"-r".to_string()) {
-            match arguments[arguments
-                .iter()
-                .position(|entry| entry == &"-r".to_string())
-                .unwrap()
-                + 1]
-            .as_str()
-            {
-                "awww" => Renderer::Awww,
-                "swaybg" => Renderer::Swaybg,
-                "auto" => Renderer::Auto,
-                renderer => {
-                    eprintln!("Invalid renderer: {}", renderer);
-                    Renderer::Awww
+            } else {
+                Duration::from_secs(300)
+            };
+            let renderer = if arguments.contains(&"-r".to_string()) {
+                match arguments[arguments
+                    .iter()
+                    .position(|entry| entry == &"-r".to_string())
+                    .unwrap()
+                    + 1]
+                .as_str()
+                {
+                    "awww" => Renderer::Awww,
+                    "swaybg" => Renderer::Swaybg,
+                    "auto" => Renderer::Auto,
+                    renderer => {
+                        eprintln!("Invalid renderer: {}", renderer);
+                        Renderer::Awww
+                    }
                 }
-            }
+            } else {
+                Renderer::Awww
+            };
+            Ok((
+                vec![PathBuf::from(
+                    arguments.last().expect("No directory provided!"),
+                )],
+                timing,
+                renderer,
+            ))
         } else {
-            Renderer::Awww
-        };
-        (
-            vec![PathBuf::from(
-                arguments.last().expect("No directory provided!"),
-            )],
-            timing,
-            renderer,
-        )
+            Err(Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "--simple not specified, exiting",
+            ))
+        }
     }
 
     pub fn init_pictures(&mut self) -> Result<(), Error> {
