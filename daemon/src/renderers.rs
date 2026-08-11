@@ -13,6 +13,7 @@ pub enum Renderer {
     Auto,
     Awww,
     Swaybg,
+    #[allow(unused)]
     Other(PathBuf, Vec<String>),
 }
 

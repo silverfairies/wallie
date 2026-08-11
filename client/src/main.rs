@@ -8,8 +8,9 @@ use {
     std::io::{BufReader, prelude::*},
 };
 
-const COMMANDS: [&str; 11] = [
-    "next", "kill", "reload", "info", "img", "help", "pause", "unpause", "help", "-h", "--help",
+const COMMANDS: [&str; 12] = [
+    "next", "kill", "reload", "info", "img", "help", "pause", "resume", "toggle", "help", "-h",
+    "--help",
 ];
 const HELP: &str = concat!(env!("CARGO_PKG_NAME"), " v", env!("CARGO_PKG_VERSION"), "
 
@@ -69,6 +70,7 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
         ("wallpaper", 'w'),
         ("duration", 'd'),
         ("time-left", 't'),
+        ("state", 's'),
         ("exact", 'e'),
         ("pretty", 'p'),
         ("json", 'j'),
@@ -110,6 +112,7 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
             if request.contains(&"wallpaper".to_string())
                 || request.contains(&"duration".to_string())
                 || request.contains(&"time-left".to_string())
+                || request.contains(&"state".to_string())
             {
                 if request.contains(&"wallpaper".to_string()) {
                     if let Some(wallpaper) = response_deser.current_wallpaper {
@@ -144,6 +147,12 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                         );
                     }
                 }
+                if request.contains(&"state".to_string()) {
+                    println!(
+                        "Playing: {}",
+                        if response_deser.playing { "yes" } else { "no" }
+                    )
+                }
             } else {
                 if let Some(wallpaper) = response_deser.current_wallpaper {
                     println!("Curent wallpaper path: {}", wallpaper.to_str().unwrap());
@@ -169,6 +178,10 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                         response_deser.time_left.as_secs()
                     );
                 }
+                println!(
+                    "Playing: {}",
+                    if response_deser.playing { "yes" } else { "no" }
+                )
             }
         } else {
             if request.contains(&"wallpaper".to_string())
@@ -196,6 +209,9 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                         println!("{}", response_deser.time_left.as_secs());
                     }
                 }
+                if request.contains(&"state".to_string()) {
+                    println!("{}", response_deser.playing)
+                }
             } else {
                 if let Some(wallpaper) = response_deser.current_wallpaper {
                     println!("{}", wallpaper.to_str().unwrap());
@@ -209,6 +225,7 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                     println!("{}", response_deser.duration.as_secs());
                     println!("{}", response_deser.time_left.as_secs());
                 }
+                println!("{}", response_deser.playing)
             }
         }
     }
@@ -220,6 +237,7 @@ pub struct Info {
     current_wallpaper: Option<PathBuf>,
     duration: Duration,
     time_left: Duration,
+    playing: bool,
 }
 
 fn parser(arg: String, possible_arguments: &[(&str, char)]) -> Result<Vec<String>, Error> {
