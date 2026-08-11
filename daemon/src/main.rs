@@ -75,6 +75,9 @@ fn main() -> Result<(), Error> {
                     "info" => listener
                         .accept()?
                         .write_all(ron::to_string(&manager.get_info()).unwrap().as_bytes())?,
+                    "pause" => manager.pause(),
+                    "resume" => manager.resume(),
+                    "toggle" => manager.toggle(),
                     _ => manager.next_picture(false)?,
                 }
             } else {

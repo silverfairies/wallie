@@ -10,6 +10,7 @@ use crate::renderers::Renderer;
 use std::{
     env::args,
     io::Error,
+    ops::Sub,
     path::PathBuf,
     str::FromStr,
     time::{Duration, Instant},
@@ -17,7 +18,7 @@ use std::{
 
 pub struct Manager {
     generator: SmallRng,
-    last_change: Instant,
+    last_change: State,
     current_wallpaper: Option<PathBuf>,
     wallpaper_directories: Vec<PathBuf>,
     wallpapers: Vec<PathBuf>,
@@ -25,6 +26,30 @@ pub struct Manager {
     sleep: Duration,
     renderer: Renderer,
     process_list: System,
+}
+
+#[derive(Clone, Copy)]
+enum State {
+    Playing(Instant),
+    Paused(Duration),
+}
+
+impl State {
+    pub fn pause(self) -> Self {
+        if let State::Playing(instant) = self {
+            Self::Paused(instant.elapsed())
+        } else {
+            self
+        }
+    }
+
+    pub fn resume(self) -> Self {
+        if let State::Paused(duration) = self {
+            Self::Playing(Instant::now().sub(duration))
+        } else {
+            self
+        }
+    }
 }
 
 impl Manager {
@@ -127,31 +152,39 @@ impl Manager {
         Ok((pictures, distribution))
     }
 
-    pub fn next_picture(&mut self, instant: bool) -> Result<(), Error> {
-        if !self
-            .last_change
-            .elapsed()
-            .saturating_sub(self.sleep)
-            .is_zero()
-            || instant
-        {
-            let new_wallpaper = self.random_picture()?;
-            let exit = self.renderer.change(&new_wallpaper, &mut self.process_list);
-            if let Err(e) = exit {
-                eprintln!("Some error while changing background happened: {}", e);
-            } else if let Ok(e) = exit {
-                if !e.success() {
-                    eprintln!(
-                        "Some error while changing background happened: {:#?}",
-                        e.code()
-                    );
-                } else {
-                    self.current_wallpaper = Some(new_wallpaper);
-                }
+    fn next(&mut self) -> Result<(), Error> {
+        let new_wallpaper = self.random_picture()?;
+        let exit = self.renderer.change(&new_wallpaper, &mut self.process_list);
+        if let Err(e) = exit {
+            eprintln!("Some error while changing background happened: {}", e);
+        } else if let Ok(e) = exit {
+            if !e.success() {
+                eprintln!(
+                    "Some error while changing background happened: {:#?}",
+                    e.code()
+                );
+            } else {
+                self.current_wallpaper = Some(new_wallpaper);
             }
-            self.last_change = Instant::now();
+        }
+        if let State::Playing(_) = self.last_change {
+            self.last_change = State::Playing(Instant::now());
         }
         Ok(())
+    }
+
+    pub fn next_picture(&mut self, instant: bool) -> Result<(), Error> {
+        if instant {
+            self.next()
+        } else if let State::Playing(instant) = self.last_change {
+            if !instant.elapsed().saturating_sub(self.sleep).is_zero() {
+                self.next()
+            } else {
+                Ok(())
+            }
+        } else {
+            Ok(())
+        }
     }
 
     fn random_picture(&mut self) -> Result<PathBuf, Error> {
@@ -170,10 +203,34 @@ impl Manager {
     }
 
     pub fn get_info(&self) -> Info {
+        let time_elapsed = if let State::Playing(instant) = self.last_change {
+            instant.elapsed()
+        } else if let State::Paused(duration) = self.last_change {
+            duration
+        } else {
+            Duration::ZERO
+        };
         Info {
             current_wallpaper: self.current_wallpaper.clone(),
             duration: self.sleep,
-            time_left: self.sleep.saturating_sub(self.last_change.elapsed()),
+            time_left: self.sleep.saturating_sub(time_elapsed),
+            playing: matches!(self.last_change, State::Playing(_)),
+        }
+    }
+
+    pub fn pause(&mut self) {
+        self.last_change = self.last_change.pause();
+    }
+
+    pub fn resume(&mut self) {
+        self.last_change = self.last_change.resume();
+    }
+
+    pub fn toggle(&mut self) {
+        self.last_change = if let State::Playing(_) = self.last_change {
+            self.last_change.pause()
+        } else {
+            self.last_change.resume()
         }
     }
 }
@@ -182,7 +239,7 @@ impl Default for Manager {
     fn default() -> Self {
         Self {
             generator: rand::make_rng(),
-            last_change: Instant::now(),
+            last_change: State::Playing(Instant::now()),
             current_wallpaper: None,
             wallpaper_directories: Vec::new(),
             wallpapers: Vec::new(),
@@ -201,4 +258,5 @@ pub struct Info {
     current_wallpaper: Option<PathBuf>,
     duration: Duration,
     time_left: Duration,
+    playing: bool,
 }
