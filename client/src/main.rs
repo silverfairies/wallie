@@ -1,7 +1,7 @@
 use constcat::concat;
 use ron::ser::PrettyConfig;
-use serde::{Deserialize, Serialize};
-use std::{env::args, io::Error, path::PathBuf, time::Duration};
+use std::{env::args, io::Error};
+use wallie_lib::Info;
 
 use {
     interprocess::local_socket::{GenericFilePath, GenericNamespaced, Stream, prelude::*},
@@ -230,14 +230,6 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
         }
     }
     Ok(())
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Info {
-    current_wallpaper: Option<PathBuf>,
-    duration: Duration,
-    time_left: Duration,
-    playing: bool,
 }
 
 fn parser(arg: String, possible_arguments: &[(&str, char)]) -> Result<Vec<String>, Error> {

@@ -1,8 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["client","daemon", "gui"]
-default-members = ["client","daemon"]
-edition = "2024"
+members = ["client","daemon", "gui", "lib"]
+default-members = ["client", "daemon"]
 
 [workspace.package]
 version = "0.1.0-unstable.0"

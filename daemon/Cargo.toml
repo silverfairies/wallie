@@ -6,10 +6,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
 constcat = "0.6.1"
 interprocess = { version = "2.4.2", default-features = false }
 rand = { version = "0.10.2", default-features = false, features = ["std", "std_rng", "sys_rng"] }
 ron = "0.12.2"
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+wallie-lib = { version = "0.1.0-unstable.0", path = "../lib" }

@@ -14,8 +14,6 @@ use manager::Manager;
 
 mod dataset;
 
-mod rules;
-
 mod renderers;
 
 const HELP: &str = concat!(env!("CARGO_PKG_NAME"), " v", env!("CARGO_PKG_VERSION"), "

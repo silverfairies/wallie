@@ -2,10 +2,10 @@ use rand::{
     distr::{Distribution, weighted::WeightedIndex},
     rngs::SmallRng,
 };
-use serde::Serialize;
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+use wallie_lib::Info;
 
-use crate::renderers::Renderer;
+use crate::{dataset::Heap, renderers::Renderer};
 
 use std::{
     env::args,
@@ -20,9 +20,7 @@ pub struct Manager {
     generator: SmallRng,
     last_change: State,
     current_wallpaper: Option<PathBuf>,
-    wallpaper_directories: Vec<PathBuf>,
-    wallpapers: Vec<PathBuf>,
-    distribution: WeightedIndex<u32>,
+    mode: Mode,
     sleep: Duration,
     renderer: Renderer,
     process_list: System,
@@ -52,11 +50,89 @@ impl State {
     }
 }
 
+#[derive(Clone)]
+enum Mode {
+    Simple {
+        wallpaper_directories: Vec<PathBuf>,
+        wallpapers: Vec<PathBuf>,
+        distribution: WeightedIndex<u32>,
+    },
+    Heap {
+        heap: Heap,
+    },
+}
+
+impl Mode {
+    fn init_pictures(&mut self) -> Result<(), Error> {
+        match self {
+            Mode::Simple {
+                wallpaper_directories,
+                wallpapers,
+                distribution,
+            } => {
+                wallpapers.clear();
+                let mut distr = Vec::new();
+                for directory in wallpaper_directories.clone() {
+                    let (mut picbuf, mut distbuf) = Self::parse_directory_recursive(directory)?;
+                    wallpapers.append(&mut picbuf);
+                    distr.append(&mut distbuf);
+                }
+                *distribution = WeightedIndex::new(distr.iter()).unwrap();
+            }
+            Mode::Heap { .. } => {
+                //TODO: Heap logic
+            }
+        }
+        Ok(())
+    }
+
+    fn parse_directory_recursive(directory: PathBuf) -> Result<(Vec<PathBuf>, Vec<u32>), Error> {
+        let entries = directory.read_dir()?;
+        let mut pictures = Vec::<PathBuf>::new();
+        let mut distribution = Vec::<u32>::new();
+        for entry in entries {
+            let picture = entry?.path();
+            if picture.is_file() {
+                pictures.push(picture);
+                distribution.push(1);
+            } else {
+                let (mut picbuf, mut distbuf) = Self::parse_directory_recursive(picture)?;
+                pictures.append(&mut picbuf);
+                distribution.append(&mut distbuf);
+            }
+        }
+        Ok((pictures, distribution))
+    }
+
+    fn random_picture(&mut self, generator: &mut SmallRng) -> Result<PathBuf, Error> {
+        match self {
+            Self::Simple {
+                wallpapers,
+                distribution,
+                ..
+            } => {
+                let new_wallpaper = wallpapers[distribution.sample(generator)].to_owned();
+                if !new_wallpaper.is_file() {
+                    eprintln!(
+                        "Some files were deleted or moved. Not found: {}",
+                        new_wallpaper.to_str().unwrap()
+                    );
+                    self.init_pictures()?;
+                    self.random_picture(generator)
+                } else {
+                    Ok(new_wallpaper)
+                }
+            }
+            Self::Heap { heap } => Ok(heap.next(generator)?.path),
+        }
+    }
+}
+
 impl Manager {
     pub fn new_from_args() -> Result<Self, Error> {
-        let (wallpaper_directories, sleep, renderer) = Self::parse_arguments()?;
+        let (mode, sleep, renderer) = Self::parse_arguments()?;
         Ok(Self {
-            wallpaper_directories,
+            mode,
             sleep,
             renderer,
             ..Default::default()
@@ -70,7 +146,7 @@ impl Manager {
         Ok(())
     }
 
-    fn parse_arguments() -> Result<(Vec<PathBuf>, Duration, Renderer), Error> {
+    fn parse_arguments() -> Result<(Mode, Duration, Renderer), Error> {
         let arguments = args().collect::<Vec<String>>();
         if arguments.contains(&"--simple".to_string()) {
             let timing = if arguments.contains(&"-d".to_string()) {
@@ -108,9 +184,13 @@ impl Manager {
                 Renderer::Awww
             };
             Ok((
-                vec![PathBuf::from(
-                    arguments.last().expect("No directory provided!"),
-                )],
+                Mode::Simple {
+                    wallpaper_directories: vec![PathBuf::from(
+                        arguments.last().expect("No directory provided!"),
+                    )],
+                    wallpapers: Vec::new(),
+                    distribution: WeightedIndex::new([1_u32].iter()).unwrap(),
+                },
                 timing,
                 renderer,
             ))
@@ -123,33 +203,7 @@ impl Manager {
     }
 
     pub fn init_pictures(&mut self) -> Result<(), Error> {
-        self.wallpapers.clear();
-        let mut distr = Vec::new();
-        for directory in self.wallpaper_directories.clone() {
-            let (mut picbuf, mut distbuf) = Self::parse_directory_recursive(directory)?;
-            self.wallpapers.append(&mut picbuf);
-            distr.append(&mut distbuf);
-        }
-        self.distribution = WeightedIndex::new(distr.iter()).unwrap();
-        Ok(())
-    }
-
-    fn parse_directory_recursive(directory: PathBuf) -> Result<(Vec<PathBuf>, Vec<u32>), Error> {
-        let entries = directory.read_dir()?;
-        let mut pictures = Vec::<PathBuf>::new();
-        let mut distribution = Vec::<u32>::new();
-        for entry in entries {
-            let picture = entry?.path();
-            if picture.is_file() {
-                pictures.push(picture);
-                distribution.push(1);
-            } else {
-                let (mut picbuf, mut distbuf) = Self::parse_directory_recursive(picture)?;
-                pictures.append(&mut picbuf);
-                distribution.append(&mut distbuf);
-            }
-        }
-        Ok((pictures, distribution))
+        self.mode.init_pictures()
     }
 
     fn next(&mut self) -> Result<(), Error> {
@@ -188,18 +242,7 @@ impl Manager {
     }
 
     fn random_picture(&mut self) -> Result<PathBuf, Error> {
-        let mut new_wallpaper =
-            self.wallpapers[self.distribution.sample(&mut self.generator)].to_owned();
-        if !new_wallpaper.is_file() {
-            eprintln!(
-                "Some files were deleted or moved. Not found: {}",
-                new_wallpaper.to_str().unwrap()
-            );
-            self.init_pictures()?;
-            new_wallpaper =
-                self.wallpapers[self.distribution.sample(&mut self.generator)].to_owned();
-        }
-        Ok(new_wallpaper)
+        self.mode.random_picture(&mut self.generator)
     }
 
     pub fn get_info(&self) -> Info {
@@ -241,9 +284,7 @@ impl Default for Manager {
             generator: rand::make_rng(),
             last_change: State::Playing(Instant::now()),
             current_wallpaper: None,
-            wallpaper_directories: Vec::new(),
-            wallpapers: Vec::new(),
-            distribution: WeightedIndex::new([1].iter()).unwrap(),
+            mode: Mode::Heap { heap: Heap::default() },
             sleep: Duration::from_secs(300),
             renderer: Renderer::Auto,
             process_list: System::new_with_specifics(
@@ -251,12 +292,4 @@ impl Default for Manager {
             ),
         }
     }
-}
-
-#[derive(Debug, Serialize)]
-pub struct Info {
-    current_wallpaper: Option<PathBuf>,
-    duration: Duration,
-    time_left: Duration,
-    playing: bool,
 }

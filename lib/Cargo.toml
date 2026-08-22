@@ -1,0 +1,14 @@
+[package]
+name = "wallie-lib"
+version = "0.1.0-unstable.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde", "now"] }
+ron = "0.12.2"
+serde = { version = "1.0.229", features = ["derive"] }
