@@ -52,6 +52,12 @@ impl State {
     }
 }
 
+enum WallpaperType {
+    Picture,
+    Animation,
+    Video,
+}
+
 impl Manager {
     pub fn new_from_args() -> Result<Self, Error> {
         let (wallpaper_directories, sleep, renderer) = Self::parse_arguments()?;

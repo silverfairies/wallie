@@ -1,11 +1,10 @@
 [workspace]
 resolver = "3"
-members = ["client","daemon", "gui"]
-default-members = ["client","daemon"]
-edition = "2024"
+members = ["client","daemon", "gui", "wallpapers"]
+default-members = ["client","daemon", "wallpapers"]
 
 [workspace.package]
-version = "0.1.0-unstable"
+version = "0.1.0-unstable.0"
 authors = ["Melissa Vernigorenko"]
 edition = "2024"
 license = "MIT"

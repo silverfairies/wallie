@@ -433,18 +433,19 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
 name = "wallie"
-version = "0.1.0-unstable"
+version = "0.1.0-unstable.0"
 dependencies = [
  "constcat",
  "interprocess",
  "ron",
  "serde",
  "serde_json",
+ "wallpapers",
 ]
 
 [[package]]
 name = "wallie-daemon"
-version = "0.1.0-unstable"
+version = "0.1.0-unstable.0"
 dependencies = [
  "chrono",
  "constcat",
@@ -453,11 +454,16 @@ dependencies = [
  "ron",
  "serde",
  "sysinfo",
+ "wallpapers",
 ]
 
 [[package]]
 name = "wallie-gui"
-version = "0.1.0-unstable"
+version = "0.1.0-unstable.0"
+
+[[package]]
+name = "wallpapers"
+version = "0.1.0-unstable.0"
 
 [[package]]
 name = "wasm-bindgen"

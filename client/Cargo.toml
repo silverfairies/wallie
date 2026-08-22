@@ -11,3 +11,4 @@ interprocess = { version = "2.4.2", default-features = false }
 ron = "0.12.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+wallpapers = { version = "0.1.0-unstable", path = "../wallpapers" }
