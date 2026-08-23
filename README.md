@@ -1,8 +1,8 @@
-# Wallie
+# <span style="color: white">Wallie</span>
 
 A (planned to be) powerful wallpaper manager for the Linux Desktop. It does not render wallpapers by itself, but allows to manage automaticly switching wallpepers based on different rules and events.
 
-IMPORTANT: Wallie is expected to work only on Linux, at least for now. It is not tested on any other *nix systems, but may work and any test information is welcome. I will never try to port it for Windows, due to how different the systems work, althrough it may become compatible "accidentaly", and contributions are welcome.
+<span style="color: gold">**IMPORTANT:**</span> Wallie is expected to work only on Linux (tested on Void Linux), at least for now. It is not tested on any other *nix systems, but may work and any test information is welcome. I will never try to port it for Windows, due to how different the systems work, althrough it may become compatible "accidentaly", and contributions are welcome.
 
 ## Installation
 
@@ -38,8 +38,7 @@ This will parse the directory recursively for **all** files, including non-pictu
 Can be specified with the -r flag
 - awww
 - swaybg
-- auto
-Defaults to auto, which itself defaults to awww if can not determine the curent wallpaper renderer.
+- auto (Defaults to auto, which itself defaults to awww if can not determine the curent wallpaper renderer.)
 
 ### CLI Interface
 Help for ```wallie``` is available:
@@ -47,17 +46,21 @@ Help for ```wallie``` is available:
 wallie help
 ```
 
+### GUI Interface
+<span style="color: gold">**Not yet implemented**</span>
+
 ## Roadmap/Planned Features
 
 - Rule based timed random wallpapers
 - Event driven immidiate wallpaper changes
 - GUI configuration
 
-### Planned official support of wallpaper renderers
-- awww ✔
-- swaybg ✔
-- mpvpaper
-- Whatever KDE does
+### Planned official support of wallpaper renderer backends
+- [awww](https://codeberg.org/LGFae/awww) ✔
+- [swaybg](https://github.com/swaywm/swaybg) ✔
+- [mpvpaper](https://github.com/GhostNaN/mpvpaper)
+- Whatever KDE-Plasma does
+- <span style="color: cornflowerblue">This list can be extended!</span>
 
 ## Contributing
 
