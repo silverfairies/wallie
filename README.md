@@ -60,6 +60,7 @@ wallie help
 - [swaybg](https://github.com/swaywm/swaybg) ✔
 - [mpvpaper](https://github.com/GhostNaN/mpvpaper)
 - Whatever KDE-Plasma does
+- COSMIC
 - <span style="color: cornflowerblue">This list can be extended!</span>
 
 ## Contributing

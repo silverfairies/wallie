@@ -1,10 +1,11 @@
-use rand::{
-    rngs::SmallRng,
-};
+use rand::rngs::SmallRng;
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 use wallie_lib::Info;
 
-use crate::{dataset::{Heap, WallLoader, Simple}, renderers::Renderer};
+use crate::{
+    dataset::{Heap, Simple, WallLoader},
+    renderers::Renderer,
+};
 
 use std::{
     env::args,
@@ -67,7 +68,7 @@ impl Manager {
         Ok(())
     }
 
-    fn parse_arguments () -> Result<(Box<dyn WallLoader>, Duration, Renderer), Error> {
+    fn parse_arguments() -> Result<(Box<dyn WallLoader>, Duration, Renderer), Error> {
         let arguments = args().collect::<Vec<String>>();
         let timing = if arguments.contains(&"-d".to_string()) {
             Duration::from_secs(
@@ -97,11 +98,11 @@ impl Manager {
                 "auto" => Renderer::Auto,
                 renderer => {
                     eprintln!("Invalid renderer: {}", renderer);
-                    Renderer::Awww
+                    Renderer::Auto
                 }
             }
         } else {
-            Renderer::Awww
+            Renderer::Auto
         };
 
         let mode: Box<dyn WallLoader> = if arguments.contains(&"--simple".to_string()) {
