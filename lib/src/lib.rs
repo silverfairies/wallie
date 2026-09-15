@@ -12,3 +12,8 @@ pub struct Info {
     pub time_left: Duration,
     pub playing: bool,
 }
+
+#[cfg(debug_assertions)]
+pub fn dprint(print: String) {
+    eprintln!("{}", print);
+}

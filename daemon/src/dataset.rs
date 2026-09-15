@@ -4,16 +4,23 @@ use rand::{
     distr::{Distribution, weighted::WeightedIndex},
     rngs::SmallRng,
 };
-use wallie_lib::dataset::Wallpaper;
+use wallie_lib::{
+    dataset::{Database, Wallpaper},
+    dprint,
+    rules::Rule,
+};
 
 #[derive(Clone)]
 pub struct Heap {
     wallpapers: Vec<Wallpaper>,
     distribution: Option<WeightedIndex<u32>>,
+    database: Database,
+    current_rules: Vec<Rule>,
 }
 
 impl WallLoader for Heap {
     fn next(&mut self, generator: &mut SmallRng) -> Result<PathBuf, Error> {
+        eprintln!("Fetching a new wallpaper");
         if let Some(distribution) = self.distribution.to_owned() {
             let mut new_wallpaper = self.wallpapers[distribution.sample(generator)].to_owned();
             for _ in 0..24 {
@@ -29,14 +36,41 @@ impl WallLoader for Heap {
             }
             Ok(new_wallpaper.path)
         } else {
-            Err(Error::other(
-                "No valid database provided or no pictures following the curent rules found!",
-            ))
+            self.reload()?;
+            Ok(self.wallpapers.first().unwrap().path.to_path_buf())
         }
     }
 
-    fn reload ( &mut self ) -> Result<(), Error> {
-        Err(Error::other("Not implemented!"))
+    fn reload(&mut self) -> Result<(), Error> {
+        if let Some((wallpapers, distr, current_rules)) =
+            self.database.get_walls(&self.current_rules)
+        {
+            eprintln!("reloaded!");
+            self.wallpapers = wallpapers;
+            self.current_rules = current_rules;
+            self.distribution = WeightedIndex::new(distr).ok();
+        } else {
+            dprint(format!(
+                "No reload happened! Current state:\n{:#?}\n{:#?}",
+                self.wallpapers, self.current_rules
+            ));
+        }
+        Ok(())
+    }
+
+    fn reload_static(&mut self) -> Result<(), Error> {
+        self.reload()
+    }
+}
+
+impl Heap {
+    pub fn generate(database: Database) -> Self {
+        let mut out = Self {
+            database,
+            ..Default::default()
+        };
+        let _ = out.reload();
+        out
     }
 }
 
@@ -46,13 +80,16 @@ impl Default for Heap {
         Self {
             wallpapers: Vec::new(),
             distribution: None,
+            database: Database::default(),
+            current_rules: Vec::new(),
         }
     }
 }
 
 pub trait WallLoader {
-    fn next ( &mut self, generator: &mut SmallRng ) -> Result<PathBuf, Error>;
-    fn reload ( &mut self ) -> Result<(), Error>;
+    fn next(&mut self, generator: &mut SmallRng) -> Result<PathBuf, Error>;
+    fn reload(&mut self) -> Result<(), Error>;
+    fn reload_static(&mut self) -> Result<(), Error>;
 }
 
 pub struct Simple {
@@ -62,7 +99,7 @@ pub struct Simple {
 }
 
 impl WallLoader for Simple {
-    fn next ( &mut self, generator: &mut SmallRng ) -> Result<PathBuf, Error> {
+    fn next(&mut self, generator: &mut SmallRng) -> Result<PathBuf, Error> {
         let new_wallpaper = self.wallpapers[self.distribution.sample(generator)].to_owned();
         if !new_wallpaper.is_file() {
             eprintln!(
@@ -76,7 +113,7 @@ impl WallLoader for Simple {
         }
     }
 
-    fn reload ( &mut self ) -> Result<(), Error> {
+    fn reload(&mut self) -> Result<(), Error> {
         self.wallpapers.clear();
         let mut distr = Vec::new();
         for directory in self.wallpaper_directories.clone() {
@@ -87,10 +124,14 @@ impl WallLoader for Simple {
         self.distribution = WeightedIndex::new(distr.iter()).unwrap();
         Ok(())
     }
+
+    fn reload_static(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
 impl Simple {
-    pub fn from_directory (path: PathBuf) -> Result<Self, Error> {
+    pub fn from_directory(path: PathBuf) -> Result<Self, Error> {
         let mut output = Self {
             wallpaper_directories: vec![path],
             wallpapers: Vec::new(),
@@ -118,4 +159,3 @@ impl Simple {
         Ok((pictures, distribution))
     }
 }
-

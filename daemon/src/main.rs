@@ -1,5 +1,8 @@
 use std::{
+    env::home_dir,
+    fs::{read, read_to_string},
     io::{self, BufReader, Error, Read, Write},
+    path::PathBuf,
     thread::sleep,
     time::Duration,
 };
@@ -11,6 +14,7 @@ use interprocess::local_socket::{
 
 mod manager;
 use manager::Manager;
+use wallie_lib::{dataset::Database, dprint};
 
 mod dataset;
 
@@ -35,8 +39,16 @@ Options:
 ");
 
 fn main() -> Result<(), Error> {
-    if let Ok(mut manager) = Manager::new_from_args() {
-        manager.init_pictures()?;
+    eprintln!(
+        "{:#?}",
+        ron::de::from_str::<Database>(
+            read_to_string(home_dir().unwrap().join(".config/wallie/database.ron"))
+                .unwrap()
+                .as_str()
+        )
+    );
+    let get_manager = Manager::new_from_args();
+    if let Ok(mut manager) = get_manager {
         manager.run()?;
 
         let printname = "wallie.sock";
@@ -60,6 +72,7 @@ fn main() -> Result<(), Error> {
         let mut living = true;
 
         while living {
+            dprint("Checking if got a request...".to_string());
             let socket = listener.accept();
 
             if let Ok(request) = socket {
@@ -83,8 +96,8 @@ fn main() -> Result<(), Error> {
             }
             sleep(Duration::from_millis(100));
         }
-    } else {
-        println!("{}", HELP);
+    } else if let Err(err) = get_manager {
+        println!("{}\n{}", err, HELP);
     }
     Ok(())
 }

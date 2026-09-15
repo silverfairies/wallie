@@ -1,16 +1,31 @@
 use constcat::concat;
 use ron::ser::PrettyConfig;
-use std::{env::args, io::Error};
-use wallie_lib::Info;
+use std::{env::args, io::Error, path::PathBuf, str::FromStr};
+use wallie_lib::{
+    Info,
+    dataset::{Database, Tag, Wallpaper},
+    rules::Rule,
+};
 
 use {
     interprocess::local_socket::{GenericFilePath, GenericNamespaced, Stream, prelude::*},
     std::io::{BufReader, prelude::*},
 };
 
-const COMMANDS: [&str; 12] = [
-    "next", "kill", "reload", "info", "img", "help", "pause", "resume", "toggle", "help", "-h",
+const COMMANDS: [&str; 13] = [
+    "next",
+    "kill",
+    "reload",
+    "info",
+    "img",
+    "help",
+    "pause",
+    "resume",
+    "toggle",
+    "help",
+    "-h",
     "--help",
+    "generate-config",
 ];
 const HELP: &str = concat!(env!("CARGO_PKG_NAME"), " v", env!("CARGO_PKG_VERSION"), "
 
@@ -56,6 +71,7 @@ fn main() {
         match entry.trim() {
             "info" => info(arg).unwrap(),
             "help" | "-h" | "--help" => println!("{}", HELP),
+            "generate-config" => generate_config(),
             _ => call_server(entry.trim()).unwrap(),
         }
         unproper = false;
@@ -314,4 +330,57 @@ fn read_server() -> Result<String, Error> {
     drop(conn);
 
     Ok(buffer)
+}
+
+fn generate_config() {
+    //if !PathBuf::from_str("~/.config/wallie/test").unwrap().exists() {
+    //    if !PathBuf::from_str("~/.config/wallie").unwrap().exists() {
+    let data = Database {
+        tags: vec![
+            Tag {
+                name: "dark".to_string(),
+            },
+            Tag {
+                name: "anime".to_string(),
+            },
+        ],
+        wallpapers: vec![
+            Wallpaper::new(
+                PathBuf::from_str("/home/argentum/Pictures/Wallpapers/112.jpg").unwrap(),
+                vec![Tag {
+                    name: "dark".to_string(),
+                }],
+            ),
+            Wallpaper::new(
+                PathBuf::from_str("/home/argentum/Pictures/Wallpapers/Anime/8808094.png").unwrap(),
+                vec![Tag {
+                    name: "anime".to_string(),
+                }],
+            ),
+        ],
+        rules: vec![
+            Rule::new(
+                "night".to_string(),
+                1,
+                1,
+                false,
+                vec![Tag {
+                    name: "dark".to_string(),
+                }],
+            ),
+            Rule::new(
+                "Anime".to_string(),
+                1,
+                1,
+                false,
+                vec![Tag {
+                    name: "anime".to_string(),
+                }],
+            ),
+        ],
+    };
+    println!(
+        "{}",
+        ron::ser::to_string_pretty(&data, PrettyConfig::new()).unwrap()
+    );
 }

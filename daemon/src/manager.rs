@@ -8,7 +8,8 @@ use crate::{
 };
 
 use std::{
-    env::args,
+    env::{args, home_dir},
+    fs::read_to_string,
     io::Error,
     ops::Sub,
     path::PathBuf,
@@ -53,6 +54,7 @@ impl State {
 impl Manager {
     pub fn new_from_args() -> Result<Self, Error> {
         let (mode, sleep, renderer) = Self::parse_arguments()?;
+        eprintln!("Constructs a new manager");
         Ok(Self {
             mode,
             sleep,
@@ -62,6 +64,7 @@ impl Manager {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
+        eprintln!("Manager initialization");
         self.renderer = self.renderer.clone().auto(&mut self.process_list);
         let picture = &self.mode.next(&mut self.generator)?;
         let _ = self.renderer.spawn(picture, &mut self.process_list)?;
@@ -106,17 +109,24 @@ impl Manager {
         };
 
         let mode: Box<dyn WallLoader> = if arguments.contains(&"--simple".to_string()) {
-                Box::new(Simple::from_directory(PathBuf::from(arguments.last().expect("No directory provided!")))?)
-            } else {
-                Box::new(Heap::default())
-            };
-        Ok((mode,
-            timing,
-            renderer,
-        ))
+            Box::new(Simple::from_directory(PathBuf::from(
+                arguments.last().expect("No directory provided!"),
+            ))?)
+        } else {
+            eprintln!("Heap");
+            Box::new(Heap::generate(
+                ron::from_str(
+                    read_to_string(home_dir().unwrap().join(".config/wallie/database.ron"))?
+                        .as_str(),
+                )
+                .unwrap_or_default(),
+            ))
+        };
+        Ok((mode, timing, renderer))
     }
 
     fn next(&mut self) -> Result<(), Error> {
+        self.mode.reload_static()?;
         let new_wallpaper = self.mode.next(&mut self.generator)?;
         let exit = self.renderer.change(&new_wallpaper, &mut self.process_list);
         if let Err(e) = exit {
