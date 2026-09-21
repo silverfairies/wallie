@@ -1,0 +1,11 @@
+[package]
+name = "wallie-tray-icon"
+version = "0.1.0-unstable.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[dependencies]
