@@ -10,11 +10,16 @@ use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
 
 #[derive(Clone)]
 pub enum Renderer {
-    Auto,
+    ///Infers the type of renderer at launch by either finding one, that already runs, or defaulting to `Renderer::Awww`.
+    Auto, //TODO: Add a configuration option
     Awww,
     Swaybg,
+    ///A not yet implemented interface to cosmic-bg
     #[allow(unused)]
     Cosmic, //TODO: something like `sed -i "s|source: Path(\"[^\"]*\"|source: Path(\"/home/argentum/Pictures/Wallpapers/wallpaper.png\"|" ~/.config/cosmic/com.system76.CosmicBackground/v1/all` but in Rust. Maybe use serde ron? Once the support for multiple outputs is added to wallie, use `output.[$name]` instead of `all` and requiering same-on-all set to true.
+    #[allow(unused)]
+    ///A not yet implemented interface to KDE Plasma's background manager
+    Plasma, //TODO: `plasma-apply-wallpaperimage wallpaper`
     #[allow(unused)]
     Other(PathBuf, Vec<String>),
 }
@@ -63,6 +68,10 @@ impl Renderer {
             Renderer::Cosmic => Err(Error::new(
                 ErrorKind::Unsupported,
                 "Cosmic integration is not yet implemented!",
+            )),
+            Renderer::Plasma => Err(Error::new(
+                ErrorKind::Unsupported,
+                "Plasma integration is not yet implemented!",
             )),
             Renderer::Other(path, args) => Command::new(path.to_str().unwrap())
                 .args(
@@ -118,6 +127,10 @@ impl Renderer {
                 ErrorKind::Unsupported,
                 "Cosmic integration is not yet implemented!",
             )),
+            Renderer::Plasma => Err(Error::new(
+                ErrorKind::Unsupported,
+                "Plasma integration is not yet implemented!",
+            )),
             Renderer::Other(_, _) => {
                 Ok(ExitStatus::default())
                 /*
@@ -147,6 +160,12 @@ impl Renderer {
             Renderer::Cosmic => {
                 eprintln!(
                     "As cosmic-bg is a part of the COSMIC Desktop Enviernment, killing it is pointless. If you do actualy need to kill it, please do that manualy with pkill cosmic-bg."
+                );
+                Ok(ExitStatus::default())
+            }
+            Renderer::Plasma => {
+                eprintln!(
+                    "As wallpapers on KDE Plasma are a part of KDE Plasma, we have no control over their runtime."
                 );
                 Ok(ExitStatus::default())
             }

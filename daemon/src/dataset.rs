@@ -20,7 +20,7 @@ pub struct Heap {
 
 impl WallLoader for Heap {
     fn next(&mut self, generator: &mut SmallRng) -> Result<PathBuf, Error> {
-        eprintln!("Fetching a new wallpaper");
+        dprint("Fetching a new wallpaper".to_string());
         if let Some(distribution) = self.distribution.to_owned() {
             let mut new_wallpaper = self.wallpapers[distribution.sample(generator)].to_owned();
             for _ in 0..24 {

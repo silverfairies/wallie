@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["client","daemon", "gui", "lib"]
+members = ["client","daemon", "gui", "lib", "tray-icon"]
 default-members = ["client", "daemon"]
 
 [workspace.package]
