@@ -4,7 +4,7 @@ use std::{env::args, io::Error, path::PathBuf, str::FromStr};
 use wallie_lib::{
     Info,
     dataset::{Database, Tag, Wallpaper},
-    rules::Rule,
+    rules::{Condition, Rule, Time, TimeRange},
 };
 
 use {
@@ -343,12 +343,27 @@ fn generate_config() {
             Tag {
                 name: "anime".to_string(),
             },
+            Tag {
+                name: "light".to_string(),
+            },
         ],
         wallpapers: vec![
             Wallpaper::new(
                 PathBuf::from_str("/home/argentum/Pictures/Wallpapers/112.jpg").unwrap(),
                 vec![Tag {
                     name: "dark".to_string(),
+                }],
+            ),
+            Wallpaper::new(
+                PathBuf::from_str("/home/argentum/Pictures/Wallpapers/sve.png").unwrap(),
+                vec![Tag {
+                    name: "light".to_string(),
+                }],
+            ),
+            Wallpaper::new(
+                PathBuf::from_str("/home/argentum/Pictures/Wallpapers/100.png").unwrap(),
+                vec![Tag {
+                    name: "light".to_string(),
                 }],
             ),
             Wallpaper::new(
@@ -360,6 +375,18 @@ fn generate_config() {
         ],
         rules: vec![
             Rule::new(
+                "day".to_string(),
+                1,
+                1,
+                false,
+                vec![Tag {
+                    name: "light".to_string(),
+                }],
+                Condition::Time(Time::Daily {
+                    timerange: TimeRange::new((20, 0, 0), (8, 0, 0)),
+                }),
+            ),
+            Rule::new(
                 "night".to_string(),
                 1,
                 1,
@@ -367,6 +394,9 @@ fn generate_config() {
                 vec![Tag {
                     name: "dark".to_string(),
                 }],
+                Condition::Time(Time::Daily {
+                    timerange: TimeRange::new((8, 0, 0), (20, 0, 0)),
+                }),
             ),
             Rule::new(
                 "Anime".to_string(),
@@ -376,6 +406,7 @@ fn generate_config() {
                 vec![Tag {
                     name: "anime".to_string(),
                 }],
+                Condition::Always,
             ),
         ],
     };

@@ -22,14 +22,21 @@ impl Rule {
         (self.tags.clone(), self.weight, self.level)
     }
 
-    pub fn new(name: String, weight: u32, level: u8, transparent: bool, tags: Vec<Tag>) -> Self {
+    pub fn new(
+        name: String,
+        weight: u32,
+        level: u8,
+        transparent: bool,
+        tags: Vec<Tag>,
+        condition: Condition,
+    ) -> Self {
         Self {
             name,
             weight,
             level,
             transparent,
             tags,
-            condition: Condition::Always,
+            condition,
         }
     }
 }
@@ -113,7 +120,26 @@ pub struct TimeRange {
 impl TimeRange {
     fn is_true(&self) -> bool {
         let now = Local::now().naive_local().time();
-        self.start.le(&now) && self.end.ge(&now)
+        if self.end.gt(&self.start) {
+            self.start.le(&now) && self.end.ge(&now)
+        } else {
+            !(self.end.le(&now) && self.start.ge(&now))
+        }
+    }
+
+    pub fn new(start: (u8, u8, u8), end: (u8, u8, u8)) -> Self {
+        Self {
+            start: NaiveTime::from_hms(
+                (start.0 % 23).into(),
+                (start.1 % 59).into(),
+                (start.2 % 59).into(),
+            ),
+            end: NaiveTime::from_hms(
+                (end.0 % 23).into(),
+                (end.1 % 59).into(),
+                (end.2 % 59).into(),
+            ),
+        }
     }
 }
 
@@ -125,7 +151,7 @@ enum Daytime {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-struct ConditionScript {
+pub struct ConditionScript {
     script: String,
     script_answer: ScriptAnswer,
 }

@@ -470,6 +470,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "wallie-tray-icon"
+version = "0.1.0-unstable.0"
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.127"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,7 +1,7 @@
 use std::{
-    io::{Error, ErrorKind},
+    io::{self, ErrorKind},
     path::{Path, PathBuf},
-    process::{Command, ExitStatus},
+    process::{self, Command},
     thread::sleep,
     time::Duration,
 };
@@ -45,31 +45,26 @@ impl Renderer {
         &self,
         picture: &Path,
         process_list: &mut System,
-    ) -> Result<std::process::ExitStatus, std::io::Error> {
+    ) -> Result<process::ExitStatus, io::Error> {
         let _ = self.spawn(picture, process_list)?;
         match self {
-            Renderer::Awww => Command::new("/bin/awww")
-                .args(["img", picture.to_str().unwrap()])
-                .status(),
+            Renderer::Awww => spawn("awww", vec!["img", picture.to_str().unwrap()]),
             Renderer::Swaybg => {
-                let _ = Command::new("/bin/swaybg")
-                    .arg("-i")
-                    .arg(picture.to_str().unwrap())
-                    .spawn()?;
-                sleep(Duration::from_millis(10));
+                _ = spawn_detached("swaybg", vec!["-i", picture.to_str().unwrap()])?;
+                sleep(Duration::from_millis(100));
                 if let Some(process) = process_list
                     .processes_by_exact_name("swaybg".as_ref())
                     .next()
                 {
                     process.kill();
                 }
-                Ok(ExitStatus::default())
+                Ok(process::ExitStatus::default())
             }
-            Renderer::Cosmic => Err(Error::new(
+            Renderer::Cosmic => Err(io::Error::new(
                 ErrorKind::Unsupported,
                 "Cosmic integration is not yet implemented!",
             )),
-            Renderer::Plasma => Err(Error::new(
+            Renderer::Plasma => Err(io::Error::new(
                 ErrorKind::Unsupported,
                 "Plasma integration is not yet implemented!",
             )),
@@ -82,7 +77,7 @@ impl Renderer {
                     .concat(),
                 )
                 .status(),
-            Renderer::Auto => Err(Error::new(
+            Renderer::Auto => Err(io::Error::new(
                 ErrorKind::Unsupported,
                 "Renderer not initialized!",
             )),
@@ -93,7 +88,7 @@ impl Renderer {
         &self,
         picture: &Path,
         process_list: &mut System,
-    ) -> Result<std::process::ExitStatus, std::io::Error> {
+    ) -> Result<process::ExitStatus, io::Error> {
         process_list.refresh_processes_specifics(
             ProcessesToUpdate::All,
             true,
@@ -106,9 +101,9 @@ impl Renderer {
                     .next()
                     .is_none()
                 {
-                    let _ = Command::new("/bin/awww-daemon").spawn()?;
+                    _ = spawn_detached("awww-daemon", vec![])?;
                 }
-                Ok(ExitStatus::default())
+                Ok(process::ExitStatus::default())
             }
             Renderer::Swaybg => {
                 if process_list
@@ -116,23 +111,20 @@ impl Renderer {
                     .next()
                     .is_none()
                 {
-                    let _ = Command::new("/bin/swaybg")
-                        .arg("-i")
-                        .arg(picture.to_str().unwrap())
-                        .spawn()?;
+                    _ = spawn_detached("swaybg", vec!["-i", picture.to_str().unwrap()])?;
                 }
-                Ok(ExitStatus::default())
+                Ok(process::ExitStatus::default())
             }
-            Renderer::Cosmic => Err(Error::new(
+            Renderer::Cosmic => Err(io::Error::new(
                 ErrorKind::Unsupported,
                 "Cosmic integration is not yet implemented!",
             )),
-            Renderer::Plasma => Err(Error::new(
+            Renderer::Plasma => Err(io::Error::new(
                 ErrorKind::Unsupported,
                 "Plasma integration is not yet implemented!",
             )),
             Renderer::Other(_, _) => {
-                Ok(ExitStatus::default())
+                Ok(process::ExitStatus::default())
                 /*
                 Command::new(path.to_str().unwrap())
                     .args(
@@ -145,7 +137,7 @@ impl Renderer {
                     .status()
                 */
             }
-            Renderer::Auto => Err(Error::new(
+            Renderer::Auto => Err(io::Error::new(
                 ErrorKind::Unsupported,
                 "Renderer not initialized!",
             )),
@@ -153,29 +145,59 @@ impl Renderer {
     }
 
     #[allow(unused)]
-    pub fn kill(&self) -> Result<std::process::ExitStatus, std::io::Error> {
+    pub fn kill(&self) -> Result<process::ExitStatus, io::Error> {
         match self {
-            Renderer::Awww => Command::new("/bin/awww").arg("kill").status(),
-            Renderer::Swaybg => Command::new("/bin/pkill").arg("swaybg").status(),
+            Renderer::Awww => Ok(process::ExitStatus::default()), //Command::new("/bin/awww").arg("kill").status(),
+            Renderer::Swaybg => Ok(process::ExitStatus::default()), //Command::new("/bin/pkill").arg("swaybg").status(),
             Renderer::Cosmic => {
                 eprintln!(
                     "As cosmic-bg is a part of the COSMIC Desktop Enviernment, killing it is pointless. If you do actualy need to kill it, please do that manualy with pkill cosmic-bg."
                 );
-                Ok(ExitStatus::default())
+                Ok(process::ExitStatus::default())
             }
             Renderer::Plasma => {
                 eprintln!(
                     "As wallpapers on KDE Plasma are a part of KDE Plasma, we have no control over their runtime."
                 );
-                Ok(ExitStatus::default())
+                Ok(process::ExitStatus::default())
             }
             Renderer::Other(path, _) => Command::new("/bin/pkill")
                 .arg(path.to_str().unwrap().to_string().split_off(5))
                 .status(),
-            Renderer::Auto => Err(Error::new(
+            Renderer::Auto => Err(io::Error::new(
                 ErrorKind::Unsupported,
                 "Renderer not initialized!",
             )),
         }
     }
+}
+
+fn spawn(program: &str, args: Vec<&str>) -> Result<process::ExitStatus, io::Error> {
+    match Command::new(format!("/bin/{}", program))
+        .args(args.clone())
+        .status()
+    {
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            Command::new(format!("/usr/local/bin/{}", program))
+                .args(args)
+                .status()
+        }
+        smth => smth,
+    }
+}
+
+fn spawn_detached(program: &str, args: Vec<&str>) -> Result<(), io::Error> {
+    if let Err(error) = Command::new(format!("/bin/{}", program))
+        .args(args.clone())
+        .spawn()
+    {
+        if error.kind() == ErrorKind::NotFound {
+            Command::new(format!("/usr/local/bin/{}", program))
+                .args(args)
+                .spawn()?;
+        } else {
+            Err(error)?;
+        }
+    }
+    Ok(())
 }

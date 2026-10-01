@@ -130,7 +130,7 @@ impl Manager {
         let new_wallpaper = self.mode.next(&mut self.generator)?;
         let exit = self.renderer.change(&new_wallpaper, &mut self.process_list);
         if let Err(e) = exit {
-            eprintln!("Some error while changing background happened: {}", e);
+            eprintln!("Some error while changing background happened: {}\nExpected wallpaper: {:#?}", e, new_wallpaper);
         } else if let Ok(e) = exit {
             if !e.success() {
                 eprintln!(

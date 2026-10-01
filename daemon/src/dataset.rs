@@ -49,6 +49,10 @@ impl WallLoader for Heap {
             self.wallpapers = wallpapers;
             self.current_rules = current_rules;
             self.distribution = WeightedIndex::new(distr).ok();
+            dprint(format!(
+                "Current state:\n{:#?}\n{:#?}",
+                self.wallpapers, self.current_rules
+            ));
         } else {
             dprint(format!(
                 "No reload happened! Current state:\n{:#?}\n{:#?}",
