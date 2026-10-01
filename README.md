@@ -2,7 +2,7 @@
 
 A (planned to be) powerful wallpaper manager for the Linux Desktop. It does not render wallpapers by itself, but allows to manage automaticly switching wallpapers based on different rules and events.
 
-<span style="color: gold">**IMPORTANT:**</span> Wallie is expected to work only on Linux (tested on Void Linux), at least for now. It is not tested on any other \*nix systems, but may work and any test information is welcome. I will never try to port it for Windows, due to how different the systems work, althrough it may become compatible "accidentaly", and contributions are welcome.
+<span style="color: gold">**IMPORTANT:**</span> Wallie is tested to work only on Linux (tested on Void Linux) and FreeBSD. It is not tested on any other \*nix systems, but may work and any test information is welcome. I will never try to port it for Windows, due to how different the systems work, althrough it may become compatible "accidentaly", and contributions are welcome.
 
 ## The Idea
 
@@ -103,7 +103,7 @@ wallie help
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ### AI/LLM Usage
-No AI/LLM was is being and will ever be used in this project. Any pull requests with major AI/LLM written code will be rejected. Sensible bug reports written/made with the help of an AI/LLM will be taken seriously, but will not get priority, unless they are actually important.
+No AI/LLM was is being and will ever be used in this project. Any pull requests with AI/LLM written code will be rejected.
 Use of AI/LLM for translation purposes to help in communication is allowed.
 
 ## License
