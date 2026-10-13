@@ -17,3 +17,8 @@ pub struct Info {
 pub fn dprint(print: String) {
     eprintln!("{}", print);
 }
+
+#[cfg(not(debug_assertions))]
+pub fn dprint(print: String) {
+    ()
+}

@@ -14,7 +14,6 @@ use interprocess::local_socket::{
 mod manager;
 use manager::Manager;
 use wallie_lib::dataset::Database;
-#[cfg(debug_assertions)]
 use wallie_lib::dprint;
 
 mod dataset;
@@ -73,7 +72,7 @@ fn main() -> Result<(), Error> {
         let mut living = true;
 
         while living {
-            dprint("[A.".to_string());
+            //dprint("[A.".to_string());
             let socket = listener.accept();
 
             if let Ok(request) = socket {

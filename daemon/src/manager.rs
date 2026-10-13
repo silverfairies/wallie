@@ -8,7 +8,7 @@ use crate::{
 };
 
 use std::{
-    env::{args, home_dir},
+    env::{self, args, home_dir},
     fs::read_to_string,
     io::Error,
     ops::Sub,
@@ -116,8 +116,21 @@ impl Manager {
             eprintln!("Heap");
             Box::new(Heap::generate(
                 ron::from_str(
-                    read_to_string(home_dir().unwrap().join(".config/wallie/database.ron"))?
-                        .as_str(),
+                    read_to_string(
+                        PathBuf::from_str(
+                            &env::var("XDG_CONFIG_HOME").unwrap_or(
+                                home_dir()
+                                    .unwrap()
+                                    .join(".config")
+                                    .to_str()
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                        )
+                        .unwrap()
+                        .join("wallie/database.ron"),
+                    )?
+                    .as_str(),
                 )
                 .unwrap_or_default(),
             ))
@@ -130,7 +143,10 @@ impl Manager {
         let new_wallpaper = self.mode.next(&mut self.generator)?;
         let exit = self.renderer.change(&new_wallpaper, &mut self.process_list);
         if let Err(e) = exit {
-            eprintln!("Some error while changing background happened: {}\nExpected wallpaper: {:#?}", e, new_wallpaper);
+            eprintln!(
+                "Some error while changing background happened: {}\nExpected wallpaper: {:#?}",
+                e, new_wallpaper
+            );
         } else if let Ok(e) = exit {
             if !e.success() {
                 eprintln!(
