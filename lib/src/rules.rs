@@ -129,16 +129,18 @@ impl TimeRange {
 
     pub fn new(start: (u8, u8, u8), end: (u8, u8, u8)) -> Self {
         Self {
-            start: NaiveTime::from_hms(
+            start: NaiveTime::from_hms_opt(
                 (start.0 % 23).into(),
                 (start.1 % 59).into(),
                 (start.2 % 59).into(),
-            ),
-            end: NaiveTime::from_hms(
+            )
+            .unwrap(),
+            end: NaiveTime::from_hms_opt(
                 (end.0 % 23).into(),
                 (end.1 % 59).into(),
                 (end.2 % 59).into(),
-            ),
+            )
+            .unwrap(),
         }
     }
 }

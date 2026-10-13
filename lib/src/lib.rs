@@ -19,6 +19,6 @@ pub fn dprint(print: String) {
 }
 
 #[cfg(not(debug_assertions))]
-pub fn dprint(print: String) {
+pub fn dprint(_print: String) {
     ()
 }

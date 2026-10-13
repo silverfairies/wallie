@@ -53,8 +53,9 @@ impl State {
 
 impl Manager {
     pub fn new_from_args() -> Result<Self, Error> {
-        let (mode, sleep, renderer) = Self::parse_arguments()?;
         eprintln!("Constructs a new manager");
+        let (mode, sleep, renderer) = Self::parse_arguments()?;
+        eprintln!("Renderer: {}", renderer.clone().name());
         Ok(Self {
             mode,
             sleep,
@@ -66,6 +67,7 @@ impl Manager {
     pub fn run(&mut self) -> Result<(), Error> {
         eprintln!("Manager initialization");
         self.renderer = self.renderer.clone().auto(&mut self.process_list);
+        eprintln!("Renderer: {}", self.renderer.name());
         let picture = &self.mode.next(&mut self.generator)?;
         let _ = self.renderer.spawn(picture, &mut self.process_list)?;
         Ok(())

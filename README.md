@@ -73,7 +73,8 @@ This will parse the directory recursively for **all** files, including non-pictu
 Can be specified with the -r flag
 - awww
 - swaybg
-- auto (Defaults to auto, which itself defaults to awww if can not determine the current wallpaper renderer.)
+- plasma
+- auto (Defaults to auto, which itself defaults to swaybg if can not determine the current wallpaper renderer.)
 
 ### CLI Interface
 Help for `wallie` is available:
@@ -94,9 +95,9 @@ wallie help
 - [awww](https://codeberg.org/LGFae/awww) ✔
 - [swaybg](https://github.com/swaywm/swaybg) ✔
 - [mpvpaper](https://github.com/GhostNaN/mpvpaper)
-- Whatever KDE-Plasma does
+- Whatever KDE-Plasma does ✔
 - COSMIC
-- <span style="color: cornflowerblue">This list can be extended!</span>
+- <span style="color: cornflowerblue">This list can be extended! Requests in issues or PRs are welcome</span>
 
 ## Contributing
 

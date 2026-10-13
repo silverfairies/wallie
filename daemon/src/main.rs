@@ -1,6 +1,4 @@
 use std::{
-    env::home_dir,
-    fs::read_to_string,
     io::{self, BufReader, Error, Read, Write},
     thread::sleep,
     time::Duration,
@@ -13,8 +11,6 @@ use interprocess::local_socket::{
 
 mod manager;
 use manager::Manager;
-use wallie_lib::dataset::Database;
-use wallie_lib::dprint;
 
 mod dataset;
 
@@ -34,7 +30,7 @@ Options:
                 The duration between wallpaper changes in seconds (default: 300 seconds)
 
             -r renderer
-                Backend for displaying wallpapers. One of awww, swaybg, plasma, auto (default: auto, if can't find anything, then default awww)
+                Backend for displaying wallpapers. One of awww, swaybg, plasma, auto (default: auto, if can't find anything, then default swaybg)
 
 ");
 

@@ -3,6 +3,7 @@ use std::{
     io::{self, ErrorKind},
     path::{Path, PathBuf},
     process::{self, Command},
+    str::FromStr,
     thread::sleep,
     time::Duration,
 };
@@ -25,18 +26,28 @@ pub enum Renderer {
 }
 
 impl Renderer {
+    pub fn name(&self) -> String {
+        match self {
+            Renderer::Awww => String::from_str("awww").unwrap(),
+            Renderer::Swaybg => String::from_str("swaybg").unwrap(),
+            Renderer::Cosmic => String::from_str("COSMIC").unwrap(),
+            Renderer::Plasma => String::from_str("KDE Plasma").unwrap(),
+            _ => String::from_str("something is not right").unwrap(),
+        }
+    }
+
     pub fn auto(self, process_list: &mut System) -> Self {
         if let Renderer::Auto = self {
             if process_list
-                .processes_by_exact_name("swaybg".as_ref())
+                .processes_by_exact_name("awww-daemon".as_ref())
                 .next()
                 .is_some()
             {
-                Renderer::Swaybg
+                Renderer::Awww
             } else if env::var("XDG_SESSION_DESKTOP").is_ok_and(|var| var == "KDE") {
                 Renderer::Plasma
             } else {
-                Renderer::Awww
+                Renderer::Swaybg
             }
         } else {
             self
