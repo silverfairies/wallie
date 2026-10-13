@@ -34,7 +34,7 @@ Options:
                 The duration between wallpaper changes in seconds (default: 300 seconds)
 
             -r renderer
-                Backend for displaying wallpapers. One of awww, swaybg, auto (default: auto, if can't find anything, then default awww)
+                Backend for displaying wallpapers. One of awww, swaybg, plasma, auto (default: auto, if can't find anything, then default awww)
 
 ");
 

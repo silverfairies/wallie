@@ -1,4 +1,5 @@
 use std::{
+    env,
     io::{self, ErrorKind},
     path::{Path, PathBuf},
     process::{self, Command},
@@ -17,9 +18,8 @@ pub enum Renderer {
     ///A not yet implemented interface to cosmic-bg
     #[allow(unused)]
     Cosmic, //TODO: something like `sed -i "s|source: Path(\"[^\"]*\"|source: Path(\"/home/argentum/Pictures/Wallpapers/wallpaper.png\"|" ~/.config/cosmic/com.system76.CosmicBackground/v1/all` but in Rust. Maybe use serde ron? Once the support for multiple outputs is added to wallie, use `output.[$name]` instead of `all` and requiering same-on-all set to true.
-    #[allow(unused)]
-    ///A not yet implemented interface to KDE Plasma's background manager
-    Plasma, //TODO: `plasma-apply-wallpaperimage wallpaper`
+    ///Interface to KDE Plasma's background manager
+    Plasma,
     #[allow(unused)]
     Other(PathBuf, Vec<String>),
 }
@@ -33,6 +33,8 @@ impl Renderer {
                 .is_some()
             {
                 Renderer::Swaybg
+            } else if env::var("XDG_SESSION_DESKTOP").is_ok_and(|var| var == "KDE") {
+                Renderer::Plasma
             } else {
                 Renderer::Awww
             }
@@ -50,7 +52,7 @@ impl Renderer {
         match self {
             Renderer::Awww => spawn("awww", vec!["img", picture.to_str().unwrap()]),
             Renderer::Swaybg => {
-                _ = spawn_detached("swaybg", vec!["-i", picture.to_str().unwrap()])?;
+                spawn_detached("swaybg", vec!["-i", picture.to_str().unwrap()])?;
                 sleep(Duration::from_millis(100));
                 if let Some(process) = process_list
                     .processes_by_exact_name("swaybg".as_ref())
@@ -60,13 +62,13 @@ impl Renderer {
                 }
                 Ok(process::ExitStatus::default())
             }
+            Renderer::Plasma => spawn(
+                "plasma-apply-wallpaperimage",
+                vec![picture.to_str().unwrap()],
+            ),
             Renderer::Cosmic => Err(io::Error::new(
                 ErrorKind::Unsupported,
-                "Cosmic integration is not yet implemented!",
-            )),
-            Renderer::Plasma => Err(io::Error::new(
-                ErrorKind::Unsupported,
-                "Plasma integration is not yet implemented!",
+                "COSMIC integration is not yet implemented!",
             )),
             Renderer::Other(path, args) => Command::new(path.to_str().unwrap())
                 .args(
@@ -101,7 +103,7 @@ impl Renderer {
                     .next()
                     .is_none()
                 {
-                    _ = spawn_detached("awww-daemon", vec![])?;
+                    spawn_detached("awww-daemon", vec![])?;
                 }
                 Ok(process::ExitStatus::default())
             }
@@ -111,7 +113,7 @@ impl Renderer {
                     .next()
                     .is_none()
                 {
-                    _ = spawn_detached("swaybg", vec!["-i", picture.to_str().unwrap()])?;
+                    spawn_detached("swaybg", vec!["-i", picture.to_str().unwrap()])?;
                 }
                 Ok(process::ExitStatus::default())
             }
@@ -119,10 +121,12 @@ impl Renderer {
                 ErrorKind::Unsupported,
                 "Cosmic integration is not yet implemented!",
             )),
-            Renderer::Plasma => Err(io::Error::new(
-                ErrorKind::Unsupported,
-                "Plasma integration is not yet implemented!",
-            )),
+            Renderer::Plasma => {
+                eprintln!(
+                    "No need to initialize KDE Plasma. If it isn't started at this point, then I don't know."
+                );
+                Ok(process::ExitStatus::default())
+            }
             Renderer::Other(_, _) => {
                 Ok(process::ExitStatus::default())
                 /*

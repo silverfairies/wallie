@@ -98,6 +98,7 @@ impl Manager {
             {
                 "awww" => Renderer::Awww,
                 "swaybg" => Renderer::Swaybg,
+                "plasma" => Renderer::Plasma,
                 "auto" => Renderer::Auto,
                 renderer => {
                     eprintln!("Invalid renderer: {}", renderer);

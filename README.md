@@ -103,8 +103,7 @@ wallie help
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ### AI/LLM Usage
-No AI/LLM was is being and will ever be used in this project. Any pull requests with AI/LLM written code will be rejected.
-Use of AI/LLM for translation purposes to help in communication is allowed.
+No Generative AI/LLM was, is being and will ever be used in this project. Any pull requests written with help of generative AI/LLMs for any purposes will be rejected.
 
 ## License
 
