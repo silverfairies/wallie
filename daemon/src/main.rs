@@ -1,7 +1,7 @@
 use std::{
-    io::{self, BufReader, Error, Read, Write},
+    io::{self, BufReader, Error, Write},
     thread::sleep,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use constcat::concat;
@@ -11,6 +11,8 @@ use interprocess::local_socket::{
 
 mod manager;
 use manager::Manager;
+use ron::error::SpannedResult;
+use wallie_lib::{communicate::Message, dprint};
 
 mod dataset;
 
@@ -68,29 +70,48 @@ fn main() -> Result<(), Error> {
         let mut living = true;
 
         while living {
-            //dprint("[A.".to_string());
+            let frame_start = Instant::now();
             let socket = listener.accept();
 
             if let Ok(request) = socket {
-                let mut request_text = String::new();
-                let mut read_request = BufReader::new(request);
-                read_request.read_to_string(&mut request_text)?;
-                match request_text.as_str() {
-                    "kill" => living = false,
-                    "next" => manager.next_picture(true)?,
-                    "reload" => manager.init_pictures()?,
-                    "info" => listener
-                        .accept()?
-                        .write_all(ron::to_string(&manager.get_info()).unwrap().as_bytes())?,
-                    "pause" => manager.pause(),
-                    "resume" => manager.resume(),
-                    "toggle" => manager.toggle(),
-                    _ => manager.next_picture(false)?,
+                let read_request = BufReader::new(request);
+                let request_deser: SpannedResult<Message> = ron::de::from_reader(read_request);
+                if let Ok(request_text) = request_deser {
+                    match request_text {
+                        Message::Kill => living = false,
+                        Message::Next => manager.next_picture(true)?,
+                        Message::Reload => manager.init_pictures()?,
+                        Message::InfoRequest => listener.accept()?.write_all(
+                            ron::to_string(&Message::InfoAnswer(manager.get_info()))
+                                .unwrap()
+                                .as_bytes(),
+                        )?,
+                        Message::SetControlFlow(set) => {
+                            if set {
+                                manager.resume()
+                            } else {
+                                manager.pause()
+                            }
+                        }
+                        Message::ToggleControlFlow => manager.toggle(),
+                        _ => manager.next_picture(false)?,
+                    }
+                } else {
+                    eprintln!("Garbled request: {:?}", request_deser);
                 }
             } else {
                 manager.next_picture(false)?;
             }
-            sleep(Duration::from_millis(100));
+            /*dprint(format!(
+                "Cycle length: ~{}ms",
+                Instant::now()
+                    .saturating_duration_since(frame_start)
+                    .as_millis()
+            ));*/
+            sleep(
+                Duration::from_millis(50)
+                    .saturating_sub(Instant::now().saturating_duration_since(frame_start)),
+            );
         }
     } else if let Err(err) = get_manager {
         println!("{}\n{}", err, HELP);

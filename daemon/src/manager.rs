@@ -1,6 +1,6 @@
 use rand::rngs::SmallRng;
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
-use wallie_lib::Info;
+use wallie_lib::communicate::Info;
 
 use crate::{
     dataset::{Heap, Simple, WallLoader},

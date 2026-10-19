@@ -47,8 +47,8 @@ Binaries are available only for Linux (tested under Void Linux) under Releases a
 ### From Source
 For unsupported platforms or latest features you can compile from source directly. Make sure to have git, cargo and some shell installed.
 ```sh
-git clone https://github.com/silverfairies/Wallie
-cd Wallie
+git clone https://codeberg.org/SilverFairies/wallie --depth 1
+cd wallie
 cargo build --release
 ```
 To install into $HOME/.cargo:

@@ -1,8 +1,13 @@
 use constcat::concat;
 use ron::ser::PrettyConfig;
-use std::{env::args, io::Error, path::PathBuf, str::FromStr};
+use std::{
+    env::args,
+    io::{Error, ErrorKind},
+    path::PathBuf,
+    str::FromStr,
+};
 use wallie_lib::{
-    Info,
+    communicate::Message,
     dataset::{Database, Tag, Wallpaper},
     rules::{Condition, Rule, Time, TimeRange},
 };
@@ -72,7 +77,7 @@ fn main() {
             "info" => info(arg).unwrap(),
             "help" | "-h" | "--help" => println!("{}", HELP),
             "generate-config" => generate_config(),
-            _ => call_server(entry.trim()).unwrap(),
+            _ => call_server_proper(convert_str_msg(entry.trim()).unwrap()).unwrap(),
         }
         unproper = false;
     }
@@ -104,146 +109,150 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
             &info_args,
         )?);
     }
-    call_server("info")?;
+    call_server_proper(Message::InfoRequest)?;
 
-    let response_deser: Info = ron::from_str(&read_server()?).unwrap();
+    let response_deser: Message = ron::from_str(&read_server()?).unwrap();
 
-    if request.contains(&"json".to_string()) {
-        if request.contains(&"pretty".to_string()) {
-            println!("{}", serde_json::to_string_pretty(&response_deser)?);
+    if let Message::InfoAnswer(response_deser) = response_deser {
+        if request.contains(&"json".to_string()) {
+            if request.contains(&"pretty".to_string()) {
+                println!("{}", serde_json::to_string_pretty(&response_deser)?);
+            } else {
+                println!("{}", serde_json::to_string(&response_deser)?);
+            }
+        } else if request.contains(&"ron".to_string()) {
+            if request.contains(&"pretty".to_string()) {
+                println!(
+                    "{}",
+                    ron::ser::to_string_pretty(&response_deser, PrettyConfig::default()).unwrap()
+                );
+            } else {
+                println!("{}", ron::to_string(&response_deser).unwrap());
+            }
         } else {
-            println!("{}", serde_json::to_string(&response_deser)?);
-        }
-    } else if request.contains(&"ron".to_string()) {
-        if request.contains(&"pretty".to_string()) {
-            println!(
-                "{}",
-                ron::ser::to_string_pretty(&response_deser, PrettyConfig::default()).unwrap()
-            );
-        } else {
-            println!("{}", ron::to_string(&response_deser).unwrap());
-        }
-    } else {
-        if request.contains(&"pretty".to_string()) {
-            if request.contains(&"wallpaper".to_string())
-                || request.contains(&"duration".to_string())
-                || request.contains(&"time-left".to_string())
-                || request.contains(&"state".to_string())
-            {
-                if request.contains(&"wallpaper".to_string()) {
+            if request.contains(&"pretty".to_string()) {
+                if request.contains(&"wallpaper".to_string())
+                    || request.contains(&"duration".to_string())
+                    || request.contains(&"time-left".to_string())
+                    || request.contains(&"state".to_string())
+                {
+                    if request.contains(&"wallpaper".to_string()) {
+                        if let Some(wallpaper) = response_deser.current_wallpaper {
+                            println!("Curent wallpaper path: {}", wallpaper.to_str().unwrap());
+                        } else {
+                            println!("Wallie does not track current wallpaper!");
+                        }
+                    }
+                    if request.contains(&"duration".to_string()) {
+                        if request.contains(&"exact".to_string()) {
+                            println!(
+                                "Time between wallpapers in nanoseconds: {}ns",
+                                response_deser.duration.as_nanos()
+                            );
+                        } else {
+                            println!(
+                                "Time between wallpapers: {}s",
+                                response_deser.duration.as_secs()
+                            );
+                        }
+                    }
+                    if request.contains(&"time-left".to_string()) {
+                        if request.contains(&"exact".to_string()) {
+                            println!(
+                                "Time till next wallaper in nanoseconds: {}ns",
+                                response_deser.time_left.as_nanos()
+                            );
+                        } else {
+                            println!(
+                                "Time till next wallpaper: {}s",
+                                response_deser.time_left.as_secs()
+                            );
+                        }
+                    }
+                    if request.contains(&"state".to_string()) {
+                        println!(
+                            "Playing: {}",
+                            if response_deser.playing { "yes" } else { "no" }
+                        )
+                    }
+                } else {
                     if let Some(wallpaper) = response_deser.current_wallpaper {
                         println!("Curent wallpaper path: {}", wallpaper.to_str().unwrap());
                     } else {
                         println!("Wallie does not track current wallpaper!");
                     }
-                }
-                if request.contains(&"duration".to_string()) {
                     if request.contains(&"exact".to_string()) {
                         println!(
                             "Time between wallpapers in nanoseconds: {}ns",
                             response_deser.duration.as_nanos()
                         );
-                    } else {
-                        println!(
-                            "Time between wallpapers: {}s",
-                            response_deser.duration.as_secs()
-                        );
-                    }
-                }
-                if request.contains(&"time-left".to_string()) {
-                    if request.contains(&"exact".to_string()) {
                         println!(
                             "Time till next wallaper in nanoseconds: {}ns",
                             response_deser.time_left.as_nanos()
                         );
                     } else {
                         println!(
+                            "Time between wallpapers: {}s",
+                            response_deser.duration.as_secs()
+                        );
+                        println!(
                             "Time till next wallpaper: {}s",
                             response_deser.time_left.as_secs()
                         );
                     }
-                }
-                if request.contains(&"state".to_string()) {
                     println!(
                         "Playing: {}",
                         if response_deser.playing { "yes" } else { "no" }
                     )
                 }
             } else {
-                if let Some(wallpaper) = response_deser.current_wallpaper {
-                    println!("Curent wallpaper path: {}", wallpaper.to_str().unwrap());
+                if request.contains(&"wallpaper".to_string())
+                    || request.contains(&"duration".to_string())
+                    || request.contains(&"time-left".to_string())
+                {
+                    if request.contains(&"wallpaper".to_string()) {
+                        if let Some(wallpaper) = response_deser.current_wallpaper {
+                            println!("{}", wallpaper.to_str().unwrap());
+                        } else {
+                            println!("none");
+                        }
+                    }
+                    if request.contains(&"duration".to_string()) {
+                        if request.contains(&"exact".to_string()) {
+                            println!("{}", response_deser.duration.as_nanos());
+                        } else {
+                            println!("{}", response_deser.duration.as_secs());
+                        }
+                    }
+                    if request.contains(&"time-left".to_string()) {
+                        if request.contains(&"exact".to_string()) {
+                            println!("{}", response_deser.time_left.as_nanos());
+                        } else {
+                            println!("{}", response_deser.time_left.as_secs());
+                        }
+                    }
+                    if request.contains(&"state".to_string()) {
+                        println!("{}", response_deser.playing)
+                    }
                 } else {
-                    println!("Wallie does not track current wallpaper!");
-                }
-                if request.contains(&"exact".to_string()) {
-                    println!(
-                        "Time between wallpapers in nanoseconds: {}ns",
-                        response_deser.duration.as_nanos()
-                    );
-                    println!(
-                        "Time till next wallaper in nanoseconds: {}ns",
-                        response_deser.time_left.as_nanos()
-                    );
-                } else {
-                    println!(
-                        "Time between wallpapers: {}s",
-                        response_deser.duration.as_secs()
-                    );
-                    println!(
-                        "Time till next wallpaper: {}s",
-                        response_deser.time_left.as_secs()
-                    );
-                }
-                println!(
-                    "Playing: {}",
-                    if response_deser.playing { "yes" } else { "no" }
-                )
-            }
-        } else {
-            if request.contains(&"wallpaper".to_string())
-                || request.contains(&"duration".to_string())
-                || request.contains(&"time-left".to_string())
-            {
-                if request.contains(&"wallpaper".to_string()) {
                     if let Some(wallpaper) = response_deser.current_wallpaper {
                         println!("{}", wallpaper.to_str().unwrap());
                     } else {
                         println!("none");
                     }
-                }
-                if request.contains(&"duration".to_string()) {
                     if request.contains(&"exact".to_string()) {
                         println!("{}", response_deser.duration.as_nanos());
-                    } else {
-                        println!("{}", response_deser.duration.as_secs());
-                    }
-                }
-                if request.contains(&"time-left".to_string()) {
-                    if request.contains(&"exact".to_string()) {
                         println!("{}", response_deser.time_left.as_nanos());
                     } else {
+                        println!("{}", response_deser.duration.as_secs());
                         println!("{}", response_deser.time_left.as_secs());
                     }
-                }
-                if request.contains(&"state".to_string()) {
                     println!("{}", response_deser.playing)
                 }
-            } else {
-                if let Some(wallpaper) = response_deser.current_wallpaper {
-                    println!("{}", wallpaper.to_str().unwrap());
-                } else {
-                    println!("none");
-                }
-                if request.contains(&"exact".to_string()) {
-                    println!("{}", response_deser.duration.as_nanos());
-                    println!("{}", response_deser.time_left.as_nanos());
-                } else {
-                    println!("{}", response_deser.duration.as_secs());
-                    println!("{}", response_deser.time_left.as_secs());
-                }
-                println!("{}", response_deser.playing)
             }
         }
+    } else {
+        eprintln!("Wrong response body: {:?}", response_deser);
     }
     Ok(())
 }
@@ -281,6 +290,22 @@ fn parser(arg: String, possible_arguments: &[(&str, char)]) -> Result<Vec<String
         }
         Ok(parsed)
     }
+}
+
+fn convert_str_msg(request: &str) -> Result<Message, Error> {
+    match request {
+        "kill" => Ok(Message::Kill),
+        "next" => Ok(Message::Next),
+        "reload" => Ok(Message::Reload),
+        "pause" => Ok(Message::SetControlFlow(false)),
+        "resume" => Ok(Message::SetControlFlow(true)),
+        "toggle" => Ok(Message::ToggleControlFlow),
+        _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command")),
+    }
+}
+
+fn call_server_proper(request: Message) -> Result<(), Error> {
+    call_server(ron::to_string(&request).unwrap().as_str())
 }
 
 fn call_server(request: &str) -> Result<(), Error> {

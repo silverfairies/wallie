@@ -7,6 +7,10 @@ description.workspace = true
 readme.workspace = true
 repository.workspace = true
 
+[lib]
+name = "wallie_lib"
+crate-type = ["lib"]
+
 [dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde", "now"] }
 ron = "0.12.2"
