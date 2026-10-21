@@ -97,6 +97,8 @@ wallie help
 - [mpvpaper](https://github.com/GhostNaN/mpvpaper)
 - Whatever KDE-Plasma does ✔
 - COSMIC
+- WindowMaker
+- feh
 - <span style="color: cornflowerblue">This list can be extended! Requests in issues or PRs are welcome</span>
 
 ## Contributing

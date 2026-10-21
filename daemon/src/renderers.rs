@@ -21,6 +21,12 @@ pub enum Renderer {
     Cosmic, //TODO: something like `sed -i "s|source: Path(\"[^\"]*\"|source: Path(\"/home/argentum/Pictures/Wallpapers/wallpaper.png\"|" ~/.config/cosmic/com.system76.CosmicBackground/v1/all` but in Rust. Maybe use serde ron? Once the support for multiple outputs is added to wallie, use `output.[$name]` instead of `all` and requiering same-on-all set to true.
     ///Interface to KDE Plasma's background manager
     Plasma,
+    ///A not yet implemented interface to feh
+    #[allow(unused)]
+    Feh, //TODO: similar to swaybg, something like `feh --bg-scale {img}`
+    ///A not yet implemented interface to wmsetbg of WindowMaker
+    #[allow(unused)]
+    Wmsetbg, //TODO: `wmsetbg {img}`
     #[allow(unused)]
     Other(PathBuf, Vec<String>),
 }
@@ -77,10 +83,7 @@ impl Renderer {
                 "plasma-apply-wallpaperimage",
                 vec![picture.to_str().unwrap()],
             ),
-            Renderer::Cosmic => Err(io::Error::new(
-                ErrorKind::Unsupported,
-                "COSMIC integration is not yet implemented!",
-            )),
+            Renderer::Cosmic | Renderer::Feh | Renderer::Wmsetbg => todo!(),
             Renderer::Other(path, args) => Command::new(path.to_str().unwrap())
                 .args(
                     [
@@ -128,10 +131,7 @@ impl Renderer {
                 }
                 Ok(process::ExitStatus::default())
             }
-            Renderer::Cosmic => Err(io::Error::new(
-                ErrorKind::Unsupported,
-                "Cosmic integration is not yet implemented!",
-            )),
+            Renderer::Cosmic | Renderer::Feh | Renderer::Wmsetbg => todo!(),
             Renderer::Plasma => {
                 eprintln!(
                     "No need to initialize KDE Plasma. If it isn't started at this point, then I don't know."
@@ -176,6 +176,7 @@ impl Renderer {
                 );
                 Ok(process::ExitStatus::default())
             }
+            Renderer::Feh | Renderer::Wmsetbg => todo!(),
             Renderer::Other(path, _) => Command::new("/bin/pkill")
                 .arg(path.to_str().unwrap().to_string().split_off(5))
                 .status(),
