@@ -1,5 +1,5 @@
 use std::{
-    io::{self, BufReader, Error, Write},
+    io::{self, BufReader, Error, Read, Write},
     thread::sleep,
     time::{Duration, Instant},
 };
@@ -74,10 +74,11 @@ fn main() -> Result<(), Error> {
             let socket = listener.accept();
 
             if let Ok(request) = socket {
-                let read_request = BufReader::new(request);
-                let request_deser: SpannedResult<Message> = ron::de::from_reader(read_request);
+                let mut buffer = String::new();
+                BufReader::new(request).read_to_string(&mut buffer)?;
+                let request_deser = wallie_lib::communicate::deserealise(&buffer);
                 if let Ok(request_text) = request_deser {
-                    match request_text {
+                    match request_text.0 {
                         Message::Kill => living = false,
                         Message::Next => manager.next_picture(true)?,
                         Message::Reload => manager.init_pictures()?,

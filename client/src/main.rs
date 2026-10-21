@@ -2,19 +2,15 @@ use constcat::concat;
 use ron::ser::PrettyConfig;
 use std::{
     env::args,
-    io::{Error, ErrorKind},
+    io::{self, ErrorKind},
     path::PathBuf,
     str::FromStr,
 };
 use wallie_lib::{
-    communicate::Message,
+    Error,
+    communicate::{Message, send_message, send_message_await},
     dataset::{Database, Tag, Wallpaper},
     rules::{Condition, Rule, Time, TimeRange},
-};
-
-use {
-    interprocess::local_socket::{GenericFilePath, GenericNamespaced, Stream, prelude::*},
-    std::io::{BufReader, prelude::*},
 };
 
 const COMMANDS: [&str; 13] = [
@@ -77,7 +73,7 @@ fn main() {
             "info" => info(arg).unwrap(),
             "help" | "-h" | "--help" => println!("{}", HELP),
             "generate-config" => generate_config(),
-            _ => call_server_proper(convert_str_msg(entry.trim()).unwrap()).unwrap(),
+            _ => send_message(convert_str_msg(entry.trim()).unwrap()).unwrap(),
         }
         unproper = false;
     }
@@ -101,33 +97,31 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
     for arg in arguments {
         request.append(&mut parser(
             arg.strip_prefix('-')
-                .ok_or(Error::new(
-                    std::io::ErrorKind::InvalidInput,
+                .ok_or(io::Error::new(
+                    io::ErrorKind::InvalidInput,
                     format!("Invalid argument: {}", arg),
                 ))?
                 .to_string(),
             &info_args,
         )?);
     }
-    call_server_proper(Message::InfoRequest)?;
+    let response = send_message_await(Message::InfoRequest)?;
 
-    let response_deser: Message = ron::from_str(&read_server()?).unwrap();
-
-    if let Message::InfoAnswer(response_deser) = response_deser {
+    if let Message::InfoAnswer(response) = response {
         if request.contains(&"json".to_string()) {
             if request.contains(&"pretty".to_string()) {
-                println!("{}", serde_json::to_string_pretty(&response_deser)?);
+                println!("{}", serde_json::to_string_pretty(&response).unwrap());
             } else {
-                println!("{}", serde_json::to_string(&response_deser)?);
+                println!("{}", serde_json::to_string(&response).unwrap());
             }
         } else if request.contains(&"ron".to_string()) {
             if request.contains(&"pretty".to_string()) {
                 println!(
                     "{}",
-                    ron::ser::to_string_pretty(&response_deser, PrettyConfig::default()).unwrap()
+                    ron::ser::to_string_pretty(&response, PrettyConfig::default()).unwrap()
                 );
             } else {
-                println!("{}", ron::to_string(&response_deser).unwrap());
+                println!("{}", ron::to_string(&response).unwrap());
             }
         } else {
             if request.contains(&"pretty".to_string()) {
@@ -137,7 +131,7 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                     || request.contains(&"state".to_string())
                 {
                     if request.contains(&"wallpaper".to_string()) {
-                        if let Some(wallpaper) = response_deser.current_wallpaper {
+                        if let Some(wallpaper) = response.current_wallpaper {
                             println!("Curent wallpaper path: {}", wallpaper.to_str().unwrap());
                         } else {
                             println!("Wallie does not track current wallpaper!");
@@ -147,36 +141,30 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                         if request.contains(&"exact".to_string()) {
                             println!(
                                 "Time between wallpapers in nanoseconds: {}ns",
-                                response_deser.duration.as_nanos()
+                                response.duration.as_nanos()
                             );
                         } else {
-                            println!(
-                                "Time between wallpapers: {}s",
-                                response_deser.duration.as_secs()
-                            );
+                            println!("Time between wallpapers: {}s", response.duration.as_secs());
                         }
                     }
                     if request.contains(&"time-left".to_string()) {
                         if request.contains(&"exact".to_string()) {
                             println!(
                                 "Time till next wallaper in nanoseconds: {}ns",
-                                response_deser.time_left.as_nanos()
+                                response.time_left.as_nanos()
                             );
                         } else {
                             println!(
                                 "Time till next wallpaper: {}s",
-                                response_deser.time_left.as_secs()
+                                response.time_left.as_secs()
                             );
                         }
                     }
                     if request.contains(&"state".to_string()) {
-                        println!(
-                            "Playing: {}",
-                            if response_deser.playing { "yes" } else { "no" }
-                        )
+                        println!("Playing: {}", if response.playing { "yes" } else { "no" })
                     }
                 } else {
-                    if let Some(wallpaper) = response_deser.current_wallpaper {
+                    if let Some(wallpaper) = response.current_wallpaper {
                         println!("Curent wallpaper path: {}", wallpaper.to_str().unwrap());
                     } else {
                         println!("Wallie does not track current wallpaper!");
@@ -184,26 +172,20 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                     if request.contains(&"exact".to_string()) {
                         println!(
                             "Time between wallpapers in nanoseconds: {}ns",
-                            response_deser.duration.as_nanos()
+                            response.duration.as_nanos()
                         );
                         println!(
                             "Time till next wallaper in nanoseconds: {}ns",
-                            response_deser.time_left.as_nanos()
+                            response.time_left.as_nanos()
                         );
                     } else {
-                        println!(
-                            "Time between wallpapers: {}s",
-                            response_deser.duration.as_secs()
-                        );
+                        println!("Time between wallpapers: {}s", response.duration.as_secs());
                         println!(
                             "Time till next wallpaper: {}s",
-                            response_deser.time_left.as_secs()
+                            response.time_left.as_secs()
                         );
                     }
-                    println!(
-                        "Playing: {}",
-                        if response_deser.playing { "yes" } else { "no" }
-                    )
+                    println!("Playing: {}", if response.playing { "yes" } else { "no" })
                 }
             } else {
                 if request.contains(&"wallpaper".to_string())
@@ -211,7 +193,7 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                     || request.contains(&"time-left".to_string())
                 {
                     if request.contains(&"wallpaper".to_string()) {
-                        if let Some(wallpaper) = response_deser.current_wallpaper {
+                        if let Some(wallpaper) = response.current_wallpaper {
                             println!("{}", wallpaper.to_str().unwrap());
                         } else {
                             println!("none");
@@ -219,40 +201,40 @@ fn info<I: Iterator<Item = String>>(arguments: I) -> Result<(), Error> {
                     }
                     if request.contains(&"duration".to_string()) {
                         if request.contains(&"exact".to_string()) {
-                            println!("{}", response_deser.duration.as_nanos());
+                            println!("{}", response.duration.as_nanos());
                         } else {
-                            println!("{}", response_deser.duration.as_secs());
+                            println!("{}", response.duration.as_secs());
                         }
                     }
                     if request.contains(&"time-left".to_string()) {
                         if request.contains(&"exact".to_string()) {
-                            println!("{}", response_deser.time_left.as_nanos());
+                            println!("{}", response.time_left.as_nanos());
                         } else {
-                            println!("{}", response_deser.time_left.as_secs());
+                            println!("{}", response.time_left.as_secs());
                         }
                     }
                     if request.contains(&"state".to_string()) {
-                        println!("{}", response_deser.playing)
+                        println!("{}", response.playing)
                     }
                 } else {
-                    if let Some(wallpaper) = response_deser.current_wallpaper {
+                    if let Some(wallpaper) = response.current_wallpaper {
                         println!("{}", wallpaper.to_str().unwrap());
                     } else {
                         println!("none");
                     }
                     if request.contains(&"exact".to_string()) {
-                        println!("{}", response_deser.duration.as_nanos());
-                        println!("{}", response_deser.time_left.as_nanos());
+                        println!("{}", response.duration.as_nanos());
+                        println!("{}", response.time_left.as_nanos());
                     } else {
-                        println!("{}", response_deser.duration.as_secs());
-                        println!("{}", response_deser.time_left.as_secs());
+                        println!("{}", response.duration.as_secs());
+                        println!("{}", response.time_left.as_secs());
                     }
-                    println!("{}", response_deser.playing)
+                    println!("{}", response.playing)
                 }
             }
         }
     } else {
-        eprintln!("Wrong response body: {:?}", response_deser);
+        eprintln!("Wrong response body: {:?}", response);
     }
     Ok(())
 }
@@ -265,7 +247,7 @@ fn parser(arg: String, possible_arguments: &[(&str, char)]) -> Result<Vec<String
             possible_arguments
                 .iter()
                 .find(|possible| possible.0 == argument)
-                .ok_or(Error::new(
+                .ok_or(io::Error::new(
                     std::io::ErrorKind::InvalidInput,
                     format!("Invalid argument: {}", argument),
                 ))?
@@ -279,7 +261,7 @@ fn parser(arg: String, possible_arguments: &[(&str, char)]) -> Result<Vec<String
                 possible_arguments
                     .iter()
                     .find(|possible| possible.1 == each)
-                    .ok_or(Error::new(
+                    .ok_or(io::Error::new(
                         std::io::ErrorKind::InvalidInput,
                         format!("Invalid argument: {}", each),
                     ))?
@@ -300,61 +282,11 @@ fn convert_str_msg(request: &str) -> Result<Message, Error> {
         "pause" => Ok(Message::SetControlFlow(false)),
         "resume" => Ok(Message::SetControlFlow(true)),
         "toggle" => Ok(Message::ToggleControlFlow),
-        _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command")),
+        _ => Err(wallie_lib::Error::Io(io::Error::new(
+            ErrorKind::InvalidInput,
+            "Invalid command",
+        ))),
     }
-}
-
-fn call_server_proper(request: Message) -> Result<(), Error> {
-    call_server(ron::to_string(&request).unwrap().as_str())
-}
-
-fn call_server(request: &str) -> Result<(), Error> {
-    let name = if GenericNamespaced::is_supported() {
-        "wallie.sock".to_ns_name::<GenericNamespaced>()?
-    } else {
-        "/tmp/wallie.sock".to_fs_name::<GenericFilePath>()?
-    };
-
-    //let mut buffer = String::with_capacity(128);
-
-    // Will fail immediately if the server hasn't started yet.
-    let mut conn = BufReader::new(Stream::connect(name)?);
-
-    // BufReader doesn't pass Write through, so we use get_mut.
-    conn.get_mut().write_all(request.as_bytes())?;
-
-    // We now employ the buffer we allocated prior and receive a single line,
-    // interpreting a newline character as an end-of-file (because local
-    // sockets cannot be portably shut down), verifying validity of UTF-8 on
-    // the fly.
-    //conn.read_line(&mut buffer)?;
-
-    // Avoid holding up resources.
-    drop(conn);
-
-    // read_line keeps the line feed at the end.
-    //print!("Server answered: {buffer}");
-    Ok(())
-}
-
-fn read_server() -> Result<String, Error> {
-    let name = if GenericNamespaced::is_supported() {
-        "wallie.sock".to_ns_name::<GenericNamespaced>()?
-    } else {
-        "/tmp/wallie.sock".to_fs_name::<GenericFilePath>()?
-    };
-
-    let mut buffer = String::new();
-
-    // Will fail immediately if the server hasn't started yet.
-    let mut conn = BufReader::new(Stream::connect(name)?);
-
-    conn.read_to_string(&mut buffer)?;
-
-    // Avoid holding up resources.
-    drop(conn);
-
-    Ok(buffer)
 }
 
 fn generate_config() {

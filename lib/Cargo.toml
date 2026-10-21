@@ -13,5 +13,7 @@ crate-type = ["lib"]
 
 [dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde", "now"] }
+interprocess = { version = "2.4.6", default-features = false }
 ron = "0.12.2"
 serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.21"
